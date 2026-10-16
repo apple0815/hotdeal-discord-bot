@@ -20,7 +20,7 @@
       "sent_at": "2026-10-16T22:13:34.479582+09:00"
     },
     "c2e898d1069cb9e9d08b7d64": {
-      "status": "sending",
+      "status": "sent",
       "fingerprint": "c2e898d1069cb9e9d08b7d64",
       "url": "https://store.steampowered.com/app/1725860/",
       "source": "steam-discovery",
@@ -29,7 +29,8 @@
         "5184230",
         "5025950"
       ],
-      "attempted_at": "2026-10-16T22:14:19.954082+09:00"
+      "message_id": "1560642054483214371",
+      "sent_at": "2026-10-16T22:14:21.329543+09:00"
     }
   }
 }
