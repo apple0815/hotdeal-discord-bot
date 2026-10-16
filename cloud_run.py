@@ -27,13 +27,19 @@ def summarize(health, path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode",choices=("preview","initialize","live","status"),default="preview")
+    parser.add_argument("--mode",choices=("preview","initialize","live","status","test"),default="preview")
     args = parser.parse_args()
     if hasattr(sys.stdout,"reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     logging.basicConfig(level=logging.INFO,format="%(levelname)s %(message)s")
     try:
         config = b.load_config(b.ROOT/"config.json")
+        if args.mode == "test":
+            b.Discord(os.environ.get("DISCORD_WEBHOOK_URL", "").strip()).send({
+                "username": "핫딜 알림", "allowed_mentions": {"parse": []},
+                "content": "✅ 핫딜 알림 연결 테스트입니다. 실제 수집·예약 실행 상태는 GitHub Actions에서 확인하세요."})
+            print("Discord 웹후크 연결 테스트 성공")
+            return 0
         if args.mode == "initialize":
             created = GitHubStore.from_environment().initialize()
             print("원격 전송 기록 초기화 완료" if created else "기존 전송 기록을 유지했습니다")
