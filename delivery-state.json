@@ -11,12 +11,13 @@
       "sent_at": "2026-10-16T22:13:28.145288+09:00"
     },
     "131157f444d22e6152aca7b8": {
-      "status": "sending",
+      "status": "sent",
       "fingerprint": "131157f444d22e6152aca7b8",
       "url": "https://pubg.com/ko/news/11136",
       "source": "pubg-patch",
       "app_ids": [],
-      "attempted_at": "2026-10-16T22:13:33.238505+09:00"
+      "message_id": "1560641858454159441",
+      "sent_at": "2026-10-16T22:13:34.479582+09:00"
     }
   }
 }
