@@ -10,6 +10,7 @@
 - [상태 초기화](https://github.com/apple0815/hotdeal-discord-bot/actions/runs/38903774180): 성공.
 - [Discord 연결 테스트](https://github.com/apple0815/hotdeal-discord-bot/actions/runs/38903999447): 성공, 실제 채널 도착 확인. 웹후크는 Repository Secret에 저장.
 - [GitHub HTTP 수집 검사](https://github.com/apple0815/hotdeal-discord-bot/actions/runs/38903756797): x64·ARM 모두 뽐뿌 목록 HTTP 403, 퀘이사존 Cloudflare 확인 페이지로 실패.
+- [GitHub macOS·Windows 검사](https://github.com/apple0815/hotdeal-discord-bot/actions/runs/38907681297): 두 환경 모두 뽐뿌 목록 HTTP 403, 퀘이사존 robots.txt HTTP 403. 실제 수집 미리보기도 두 사이트 모두 실패.
 - [일반 Chromium 검사](https://github.com/apple0815/hotdeal-discord-bot/actions/runs/38904152755): 두 게시판의 robots.txt 확인 단계에서 차단. CAPTCHA 해결·로그인 쿠키·프록시는 사용하지 않음.
 - `HOTDEAL_ENABLED`는 설정하지 않았으며, 접속 가능한 실행 환경을 확인하기 전에는 켜지 않습니다. 아래 GitHub 설정 절차는 **해당 환경에서 preview가 두 사이트 모두 성공한 뒤** 사용합니다.
 
@@ -20,11 +21,13 @@
 | 환경 | 뽐뿌 | 퀘이사존 | 현재 판단 |
 |---|---|---|---|
 | 현재 PC | 목록·본문 수집 성공 | 목록·본문 수집 성공 | PC 전원 필요 |
-| GitHub 표준 x64·ARM | 목록 403 | Cloudflare 확인 화면 | 예약 비활성 |
+| GitHub Linux x64·ARM, macOS, Windows 표준 러너 | 목록 403 | Cloudflare 확인 화면 | 예약 비활성 |
 | Cloudflare Workers Playground | robots 200, 목록 302의 Location을 따라가면 403 | robots·목록·표본 본문 200 | 두 사이트 동시 운영 불가 |
-| Google Apps Script | 검사 준비 | 검사 준비 | 최초 외부 요청 권한 승인 후 검사 예정 |
+| Google Apps Script | PC·모바일 robots.txt 모두 403 | robots.txt 403 | 외부 연결 권한 승인 후 실제 검사 실패 |
 
 Cloudflare 검사는 [공식 Playground](https://developers.cloudflare.com/workers/playground/)에서 일반 `fetch`로 진행했습니다. 브라우저 위장이나 로그인 쿠키를 사용하지 않았습니다. 시험용 코드는 Discord 웹후크를 포함하지 않습니다.
+
+Google 검사는 외부 요청 권한(`script.external_request`)만 승인한 뒤 실행했습니다. 22:21 KST에 두 사이트의 robots.txt가 403을 반환했고, 22:28 KST에 뽐뿌 공식 모바일 도메인도 403을 반환했습니다. 이 환경에서는 목록 요청을 진행하지 않았습니다. 진단 프로젝트에는 예약 트리거를 만들지 않았습니다. **카드 등록·PC 상시 가동 없이 두 사이트를 모두 수집하는 운영 환경은 아직 확보하지 못했습니다.**
 
 카드 등록이 필요한 클라우드는 현재 운영 후보에서 제외합니다. `apps-script-probe.gs`는 Google 서버의 접속 여부만 검사하는 수동 진단 코드입니다. 먼저 `probeRobots`로 정책을 확인한 다음 허용된 경로에 한해 `probeLists`를 실행합니다. 실제 전송·트리거·개인 문서 접근 기능은 없습니다. Apps Script의 개인 계정 한도는 외부 요청 20,000회/일, 트리거 실행 시간 90분/일이며 [Google 공식 한도](https://developers.google.com/apps-script/guides/services/quotas)를 따릅니다. **접속 성공 및 소요 시간 검증 전에는 운영 봇으로 간주하지 않습니다.**
 

@@ -8,6 +8,15 @@ function probeLists() {
   probeUrls_(['https://www.ppomppu.co.kr/zboard/zboard.php?id=ppomppu', 'https://quasarzone.com/bbs/qb_saleinfo'], false);
 }
 
+function probeMobileRobots() {
+  probeUrls_(['https://m.ppomppu.co.kr/robots.txt'], true);
+}
+
+// Run only after reviewing a successful mobile robots response.
+function probeMobileList() {
+  probeUrls_(['https://m.ppomppu.co.kr/new/bbs_list.php?id=ppomppu'], false);
+}
+
 function probeUrls_(urls, policy) {
   urls.forEach(function(url) {
     try {
@@ -27,7 +36,7 @@ function probeUrls_(urls, policy) {
         bytes: response.getContent().length,
         title: title ? title[1] : '',
         rows: (body.match(/baseList-title|class="subject-link"/g) || []).length,
-        policy: policy ? body.slice(0, 6000) : undefined}));
+        policy: policy && response.getResponseCode() === 200 ? body.slice(0, 6000) : undefined}));
     } catch (error) {
       console.log(JSON.stringify({url: url, error: String(error)}));
     }
