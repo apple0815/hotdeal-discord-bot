@@ -1,0 +1,67 @@
+name: Connectivity check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/connectivity.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt
+      - name: Inspect public HTTP responses
+        shell: python
+        run: |
+          import gzip, json, time
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+          from urllib.robotparser import RobotFileParser
+          from hotdeal_bot import UA
+          sources = [
+            ('https://www.ppomppu.co.kr', '/zboard/zboard.php?id=ppomppu'),
+            ('https://quasarzone.com', '/bbs/qb_saleinfo')]
+          for origin, listing in sources:
+              policy = None
+              for path in ['/robots.txt', listing]:
+                  if path != '/robots.txt' and (policy is None or not policy.can_fetch(UA, origin+path)):
+                      print(json.dumps({'url': origin+path, 'skipped': 'robots unavailable or disallowed'}))
+                      continue
+                  req = Request(origin+path, headers={'User-Agent': UA, 'Accept': 'text/html,text/plain', 'Accept-Encoding': 'gzip'})
+                  try:
+                      response = urlopen(req, timeout=25)
+                  except HTTPError as exc:
+                      response = exc
+                  except (URLError, OSError) as exc:
+                      print(json.dumps({'url': origin+path, 'error': type(exc).__name__}))
+                      continue
+                  with response:
+                      raw = response.read(3000000)
+                      if response.headers.get('Content-Encoding','').lower() == 'gzip':
+                          raw = gzip.decompress(raw)
+                      row = {'url': origin+path, 'status': response.status, 'bytes': len(raw),
+                             'server': response.headers.get('Server'), 'type': response.headers.get('Content-Type')}
+                      if response.status != 200:
+                          row['error_excerpt'] = raw[:600].decode('utf-8', errors='replace')
+                      print(json.dumps(row, ensure_ascii=False))
+                      if path == '/robots.txt' and response.status == 200:
+                          policy = RobotFileParser()
+                          policy.parse(raw.decode('utf-8',errors='replace').splitlines())
+                  time.sleep(2)
+      - name: Validate collectors without Discord
+        run: python cloud_run.py --mode preview
