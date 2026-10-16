@@ -1,0 +1,70 @@
+name: Browser connectivity check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/browser-check.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt playwright==1.64.0
+      - run: python -m playwright install --with-deps chromium
+      - name: Check ordinary Chromium access without login or stealth
+        shell: python
+        run: |
+          import json, os, sys, time
+          from datetime import datetime
+          from urllib.robotparser import RobotFileParser
+          from playwright.sync_api import sync_playwright, Error
+          sys.path.insert(0, os.getcwd())
+          import hotdeal_bot as b
+          success = 0
+          with sync_playwright() as engine:
+              browser = engine.chromium.launch()
+              context = browser.new_context()
+              page = context.new_page()
+              page.set_default_timeout(25000)
+              for source, origin in b.BASES.items():
+                  try:
+                      response = page.goto(origin+'/robots.txt', wait_until='domcontentloaded')
+                      page.wait_for_timeout(5000)
+                      text = page.locator('body').inner_text()
+                      title = page.title()
+                      # No CAPTCHA solving, stealth patches, proxy or imported login cookies.
+                      if 'just a moment' in title.lower() or 'user-agent:' not in text.lower():
+                          print(json.dumps({'source':source,'stage':'robots','status':response.status if response else None,'title':title,'result':'unavailable'},ensure_ascii=False))
+                          continue
+                      policy = RobotFileParser()
+                      policy.parse(text.splitlines())
+                      url = b.list_url(source,1)
+                      if not policy.can_fetch('*',url):
+                          print(json.dumps({'source':source,'result':'robots disallowed'}))
+                          continue
+                      time.sleep(2)
+                      response = page.goto(url,wait_until='domcontentloaded')
+                      page.wait_for_timeout(5000)
+                      html = page.content()
+                      parser = b.parse_ppomppu if source == 'ppomppu' else b.parse_quasarzone
+                      try:
+                          deals = parser(html,datetime.now(b.KST))
+                          print(json.dumps({'source':source,'stage':'list','status':response.status if response else None,'parsed':len(deals)},ensure_ascii=False))
+                          success += 1
+                      except b.SourceError:
+                          print(json.dumps({'source':source,'stage':'list','status':response.status if response else None,'title':page.title(),'result':'blocked or unparseable'},ensure_ascii=False))
+                  except Error as exc:
+                      print(json.dumps({'source':source,'result':type(exc).__name__}))
+              browser.close()
+          raise SystemExit(0 if success == 2 else 1)
