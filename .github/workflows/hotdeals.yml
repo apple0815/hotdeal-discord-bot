@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'preview=수집만 / initialize=최초 상태 준비 / live=전송 / status=전송 확인 필요 목록'
+        description: 'preview=수집만 / initialize=최초 상태 준비 / test=연결 테스트 / live=전송 / status=확인 필요 목록'
         type: choice
         default: preview
-        options: [preview, initialize, live, status]
+        options: [preview, initialize, test, live, status]
 
 permissions:
   contents: read

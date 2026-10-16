@@ -32,7 +32,7 @@ jobs:
           from urllib.request import Request, urlopen
           from urllib.error import HTTPError, URLError
           from urllib.robotparser import RobotFileParser
-          from hotdeal_bot import UA
+          UA = 'HotdealNotifier/1.0 (personal deal feed reader)'
           sources = [
             ('https://www.ppomppu.co.kr', '/zboard/zboard.php?id=ppomppu'),
             ('https://quasarzone.com', '/bbs/qb_saleinfo')]
