@@ -6,7 +6,7 @@
 |---|---|---|
 | PUBG PC 이벤트 마감 | 배그-정보 | 매일 20:07, D-7 / D-3 / D-1에 각각 1회 |
 | PUBG PC 패치 요점 | 배그-정보 | 매일 09:07 / 21:07 확인, 새 내용만 게시 |
-| 같이 할 신작·데모 + 관심 투표 | 종합게임정보 | 금요일 20:07, 최대 3개, 72시간 복수 선택 투표 |
+| 같이 할 신작·데모 소개 | 종합게임정보 | 금요일 20:07, 최대 3개, 소개만 게시 |
 
 GitHub 예약은 혼잡 시 늦어질 수 있습니다. 첫 배포 수동 실행은 현재 패치·해당 주 후보·당일 마감 단계만 게시합니다. 이미 지난 D-7 등을 몰아서 보내지 않습니다.
 
@@ -55,4 +55,6 @@ python -m game_news --resolve KEY --resolution retry
 
 `sent`는 이미 게시됨을 확인했을 때, `retry`는 게시되지 않았음을 확인했을 때만 사용합니다. GitHub의 경우 `GITHUB_ACTIONS=true`, 해당 저장소 `GITHUB_REPOSITORY`, 쓰기 가능한 `GITHUB_TOKEN`이 있는 신뢰할 수 있는 환경에서 수행합니다. 상태 브랜치를 삭제하면 중복이 생길 수 있습니다. 잠금 파일 `state/.running`은 실제 실행 프로세스가 종료된 것을 확인한 경우에만 제거합니다.
 
-공식 문서: [PUBG 패치](https://pubg.com/ko/news?category=patch_notes), [Discord Webhook](https://docs.discord.com/developers/resources/webhook), [Discord Poll](https://docs.discord.com/developers/resources/poll).
+신작 소개에는 투표나 참여 요청을 붙이지 않습니다.
+
+공식 문서: [PUBG 패치](https://pubg.com/ko/news?category=patch_notes), [Discord Webhook](https://docs.discord.com/developers/resources/webhook).

@@ -60,7 +60,7 @@ def main():
                 elif feature=='patches':
                     posts, details = patches.collect(client)
                 else:
-                    excluded = {appid for item in store.data['posts'].values() for appid in item.get('app_ids',[])}
+                    excluded = {appid for item in store.data['posts'].values() if item.get('source')=='steam-recommendations' for appid in item.get('app_ids',[])}
                     posts, details = discovery.collect(client,now,excluded)
                 pending = [p for p in posts if not store.seen(p)]
                 details['pending'] = len(pending)

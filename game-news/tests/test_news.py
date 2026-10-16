@@ -44,16 +44,17 @@ class NewsTests(unittest.TestCase):
                 d=self.app();d.update(change)
                 self.assertIsNone(facts('10',d,NOW))
 
-    def test_poll_schema_limits_and_week_dedup(self):
+    def test_recommendations_have_no_poll_and_week_dedup(self):
         g=facts('10',self.app(),NOW)
         a=make_post([g],NOW)
         b=make_post([dict(g,name='changed')],NOW)
         self.assertEqual(a.key,b.key)
         body=payload(a)
-        self.assertEqual(len(body['poll']['answers']),2)
-        self.assertEqual(body['poll']['duration'],72)
+        self.assertNotIn('poll',body)
+        self.assertNotIn('투표',body['content'])
+        self.assertEqual(len(body['embeds']),1)
         self.assertEqual(body['allowed_mentions'],{'parse':[]})
-        self.assertTrue(all(len(x['poll_media']['text'])<=55 for x in body['poll']['answers']))
+        self.assertEqual(a.app_ids,('10',))
 
     def test_patch_console_and_store_excluded_and_numbers_preserved(self):
         html='''<h1 class="detail-header__title">패치 노트 - 업데이트 44.1</h1><div class="content-template">

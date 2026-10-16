@@ -72,12 +72,8 @@ def make_post(games, now):
                 {'name':'크로스플레이', 'value':game['crossplay']},
                 {'name':'유형 / 공개일', 'value':('온라인 협동' if game['coop'] else '온라인 멀티') + ' / ' + game['released']}],
             'footer':{'text':'Steam 제작사 설명 기준 · 한글 지원/데모 멀티 범위는 상점 확인'}})
-    answers = [{'poll_media':{'text':f'{i}. ' + clean(g['name'])[:48]}} for i,g in enumerate(games[:3],1)]
-    answers.append({'poll_media':{'text':'이번 주는 패스'}})
-    body = {'content':'🎮 이번 주 같이 해볼 신작·데모 후보! 관심 있는 게임에 투표해 주세요. (72시간 · 복수 선택 가능)',
-        'embeds':embeds, 'poll':{'question':{'text':'이번 주 같이 해보고 싶은 게임은?'}, 'answers':answers,
-        'duration':72, 'allow_multiselect':True, 'layout_type':1}}
-    return Post(digest(f'discovery|{week.year}-W{week.week}'), games[0]['url'], 'steam-discovery', body, tuple(g['appid'] for g in games[:3]))
+    body = {'content':'🎮 이번 주 같이 해볼 신작·데모를 소개해요. 인원·플레이 시간·크로스플레이 정보와 상점 링크를 확인해 보세요.', 'embeds':embeds}
+    return Post(digest(f'recommendations|{week.year}-W{week.week}'), games[0]['url'], 'steam-recommendations', body, tuple(g['appid'] for g in games[:3]))
 
 
 def collect(client, now, excluded=()):
