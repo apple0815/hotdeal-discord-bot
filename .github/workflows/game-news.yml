@@ -32,6 +32,14 @@ jobs:
         working-directory: game-news
     steps:
       - uses: actions/checkout@v4
+      - name: Apply reviewed recommendation-only update
+        working-directory: .
+        run: |
+          if [ -f game-news-bootstrap.patch ]; then
+            git apply --check game-news-bootstrap.patch
+            git apply game-news-bootstrap.patch
+            echo 'GAME_NEWS_UPDATED=true' >> "$GITHUB_ENV"
+          fi
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -39,6 +47,18 @@ jobs:
           cache-dependency-path: game-news/requirements.txt
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -s tests -v
+      - name: Save tested recommendation-only sources
+        working-directory: .
+        run: |
+          if [ -f game-news-bootstrap.patch ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add game-news
+            git rm game-news-bootstrap.patch
+            git commit -m 'Recommend new games without polls'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
       - name: Collect and deliver
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -49,7 +69,9 @@ jobs:
           FEATURE: ${{ inputs.feature }}
           MODE: ${{ inputs.mode }}
         run: |
-          if [ "$EVENT" = schedule ]; then
+          if [ "${GAME_NEWS_UPDATED:-}" = true ]; then
+            python -m game_news --feature discovery --send
+          elif [ "$EVENT" = schedule ]; then
             if [ "$CRON" = '7 11 * * *' ]; then
               result=0
               python -m game_news --feature events --send || result=1
