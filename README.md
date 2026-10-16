@@ -143,6 +143,6 @@ export DISCORD_WEBHOOK_URL
 .\.venv\Scripts\python.exe .\hotdeal_bot.py --dry-run --once
 ```
 
-`python -m unittest discover -v`로 기본 봇과 클라우드 테스트를 모두 실행합니다. 선별 경계, 다른의견 비율, EUC-KR, 현재 두 게시판의 HTML 형태, 실제 뽐뿌의 중복 class 속성, 나중에 늘어난 추천, 최초 알림 제한, 재시작 중복, 중복 실행 잠금, 사이트별 장애 격리, 부분 수집 실패, 429 재시도, 전송 결과 불명, gzip 처리, 원격 상태 유실·저장 실패·경합 및 작업 중단 후 복구를 검증합니다. 실제 디스코드 전송은 사용자의 웹후크를 연결하기 전까지 검증되지 않았습니다. Windows 작업 스케줄러 스크립트는 구문 검사를 마쳤으며, 현재 PC에는 작업을 등록하지 않았습니다.
+`python -m unittest discover -v`로 기본 봇과 클라우드 테스트를 모두 실행합니다. 선별 경계, 다른의견 비율, EUC-KR, 현재 두 게시판의 HTML 형태, 실제 뽐뿌의 중복 class 속성, 나중에 늘어난 추천, 최초 알림 제한, 재시작 중복, 중복 실행 잠금, 사이트별 장애 격리, 부분 수집 실패, 429 재시도, 전송 결과 불명, gzip 처리, 원격 상태 유실·저장 실패·경합 및 작업 중단 후 복구를 검증합니다. 실제 디스코드 전송은 GitHub Actions의 test 실행으로 채널 도착까지 확인했습니다. 게시판 접속 제한으로 실제 핫딜의 예약 전송은 아직 시작하지 않았습니다. Windows 작업 스케줄러 스크립트는 구문 검사를 마쳤으며, 현재 PC에는 작업을 등록하지 않았습니다.
 
 참고: [뽐뿌 게시판](https://www.ppomppu.co.kr/zboard/zboard.php?id=ppomppu), [퀘이사존 핫딜](https://quasarzone.com/bbs/qb_saleinfo), [Discord 웹후크 API](https://docs.discord.com/developers/resources/webhook#execute-webhook). 사이트 접근 정책과 HTML은 변경될 수 있습니다.
