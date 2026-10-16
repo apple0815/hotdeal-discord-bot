@@ -1,0 +1,12 @@
+{
+  "send_hour_kst": 20,
+  "listings": [
+    {"kind": "events", "url": "https://pubg.com/ko/events/notice?label=label_pc&size=20"},
+    {"kind": "news", "url": "https://pubg.com/ko/news?category=notice&label=label_pc&size=20&page=1"},
+    {"kind": "news", "url": "https://pubg.com/ko/news?category=notice&label=label_pc&size=20&page=2"},
+    {"kind": "news", "url": "https://pubg.com/ko/news?category=notice&label=label_pc&size=20&page=3"}
+  ],
+  "extra_sources": [
+    "https://pubg.com/ko/news/10991"
+  ]
+}
