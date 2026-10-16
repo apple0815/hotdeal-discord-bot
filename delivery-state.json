@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "posts": {
+    "d4eca05989b9a505b1ff01d1": {
+      "status": "sending",
+      "fingerprint": "d4eca05989b9a505b1ff01d1",
+      "url": "https://pubg.com/ko/news/10991",
+      "source": "pubg-events",
+      "app_ids": [],
+      "attempted_at": "2026-10-16T22:13:25.995828+09:00"
+    }
+  }
+}
