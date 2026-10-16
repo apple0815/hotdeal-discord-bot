@@ -1,0 +1,29 @@
+{
+  "interval_seconds": 600,
+  "request_delay_seconds": 2,
+  "max_age_hours": 24,
+  "first_run_age_minutes": 60,
+  "max_messages_per_cycle": 5,
+  "max_first_run_messages": 3,
+  "exclude_keywords": [],
+  "sources": {
+    "ppomppu": {
+      "enabled": true,
+      "pages": 10,
+      "min_votes": 8,
+      "min_votes_with_comments": 4,
+      "min_comments": 15,
+      "max_downvotes": 2,
+      "max_downvote_ratio": 0.2
+    },
+    "quasarzone": {
+      "enabled": true,
+      "pages": 2,
+      "min_votes": 8,
+      "min_votes_with_comments": 4,
+      "min_comments": 15,
+      "max_downvotes": 2,
+      "max_downvote_ratio": 0.2
+    }
+  }
+}
