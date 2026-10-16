@@ -2,18 +2,43 @@
 
 뽐뿌·퀘이사존의 전체 카테고리를 10분마다 확인하고, 추천·댓글 기준을 충족한 글의 상품명, 가격, 배송 조건, 본문 발췌 요약과 원문 링크를 지정한 디스코드 텍스트 채널에 보냅니다. 별도 디스코드 봇 계정이나 AI API 키 없이 채널 웹후크로 동작합니다.
 
-**뽐뿌 403 수정 및 GitHub Actions 지원 완료. 웹후크 연결 전에는 실제 전송하지 않습니다.**
+**PC 환경의 뽐뿌 403은 수정했습니다. GitHub Actions 배포·상태 초기화·Discord 연결 테스트는 성공했으나, GitHub 서버에서 두 게시판 접근이 차단되어 예약 전송은 아직 비활성 상태입니다.**
+
+### 현재 배포 상태 (2026-10-16)
+
+- [공개 저장소](https://github.com/apple0815/hotdeal-discord-bot): 코드 게시 완료, 34개 테스트 통과.
+- [상태 초기화](https://github.com/apple0815/hotdeal-discord-bot/actions/runs/38903774180): 성공.
+- [Discord 연결 테스트](https://github.com/apple0815/hotdeal-discord-bot/actions/runs/38903999447): 성공, 실제 채널 도착 확인. 웹후크는 Repository Secret에 저장.
+- [GitHub HTTP 수집 검사](https://github.com/apple0815/hotdeal-discord-bot/actions/runs/38903756797): x64·ARM 모두 뽐뿌 목록 HTTP 403, 퀘이사존 Cloudflare 확인 페이지로 실패.
+- [일반 Chromium 검사](https://github.com/apple0815/hotdeal-discord-bot/actions/runs/38904152755): 두 게시판의 robots.txt 확인 단계에서 차단. CAPTCHA 해결·로그인 쿠키·프록시는 사용하지 않음.
+- `HOTDEAL_ENABLED`는 설정하지 않았으며, 접속 가능한 실행 환경을 확인하기 전에는 켜지 않습니다. 아래 GitHub 설정 절차는 **해당 환경에서 preview가 두 사이트 모두 성공한 뒤** 사용합니다.
+
+### 무료 실행 환경 검사
+
+2026-10-16 실제 검사 결과입니다. 무료 요금제라는 사실만으로 사이트 접근까지 보장되지는 않습니다.
+
+| 환경 | 뽐뿌 | 퀘이사존 | 현재 판단 |
+|---|---|---|---|
+| 현재 PC | 목록·본문 수집 성공 | 목록·본문 수집 성공 | PC 전원 필요 |
+| GitHub 표준 x64·ARM | 목록 403 | Cloudflare 확인 화면 | 예약 비활성 |
+| Cloudflare Workers Playground | robots 200, 목록 302의 Location을 따라가면 403 | robots·목록·표본 본문 200 | 두 사이트 동시 운영 불가 |
+| Google Apps Script | 검사 준비 | 검사 준비 | 최초 외부 요청 권한 승인 후 검사 예정 |
+
+Cloudflare 검사는 [공식 Playground](https://developers.cloudflare.com/workers/playground/)에서 일반 `fetch`로 진행했습니다. 브라우저 위장이나 로그인 쿠키를 사용하지 않았습니다. 시험용 코드는 Discord 웹후크를 포함하지 않습니다.
+
+카드 등록이 필요한 클라우드는 현재 운영 후보에서 제외합니다. `apps-script-probe.gs`는 Google 서버의 접속 여부만 검사하는 수동 진단 코드입니다. 먼저 `probeRobots`로 정책을 확인한 다음 허용된 경로에 한해 `probeLists`를 실행합니다. 실제 전송·트리거·개인 문서 접근 기능은 없습니다. Apps Script의 개인 계정 한도는 외부 요청 20,000회/일, 트리거 실행 시간 90분/일이며 [Google 공식 한도](https://developers.google.com/apps-script/guides/services/quotas)를 따릅니다. **접속 성공 및 소요 시간 검증 전에는 운영 봇으로 간주하지 않습니다.**
 
 2026-10-16 검증에서 Python 기본 요청의 `Accept-Encoding: identity`를 사용하면 뽐뿌 목록이 403을 반환했고, 같은 봇 이름과 URL에 `Accept-Encoding: gzip`을 적용하면 200을 반환했습니다. gzip 압축 해제와 크기 제한 처리를 추가한 후, 뽐뿌 최대 10페이지 200건과 퀘이사존 2페이지 60건을 실제 수집했습니다. 사용자 계정·로그인 쿠키·프록시·브라우저 위장은 사용하지 않습니다. 사이트 정책이나 구조가 바뀌면 수집을 멈추고 오류로 표시합니다.
 
 ## PC 없이: GitHub Actions
 
-공개 저장소의 일반 GitHub 호스팅 Linux 러너로 실행합니다. PC와 Codex 앱을 꺼도 작동합니다. 웹후크는 GitHub Secret에만 저장하며 Python은 GitHub 서버에서 실행됩니다.
+공개 저장소의 일반 GitHub 호스팅 Linux 러너에서 실행하도록 구성했습니다. 실행 자체에는 PC와 Codex 앱이 필요 없지만, 현재 검증한 GitHub 러너에서는 게시판 접속이 차단됩니다. 웹후크는 GitHub Secret에만 저장하며 Python은 GitHub 서버에서 실행됩니다.
 
 1. 이 폴더의 내용을 공개 GitHub 저장소의 **최상위**에 올립니다. 숨김 폴더 `.github/workflows/`도 포함해야 합니다. `.venv`, `data`, `webhook.secret`, `.env`는 올리지 않습니다.
 2. 저장소 → **Actions → Hotdeal notifier → Run workflow**에서 `preview`를 실행합니다. 전송 없이 두 게시판의 수집·선별·본문 요약을 확인합니다. 최근 24시간 범위를 미리 보므로 로컬 첫 실행의 최근 60분 제한과 다릅니다.
 3. 같은 메뉴에서 `initialize`를 한 번 실행합니다. `hotdeal-state` 브랜치에 전송 기록을 준비합니다. 다시 실행해도 기존 기록을 지우지 않습니다.
 4. 저장소 → **Settings → Secrets and variables → Actions → Secrets → New repository secret**에서 이름 `DISCORD_WEBHOOK_URL`, 값은 원하는 채널의 웹후크 URL로 저장합니다. [공식 Secret 안내](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
+   `Run workflow`에서 `test`를 실행하면 실제 채널에 연결 확인 메시지 한 건을 보냅니다. 이 테스트는 수집 성공 여부와 별개입니다.
 5. **Variables** 탭에 `HOTDEAL_ENABLED`를 값 `true`로 추가합니다. 이후 매시 03·13·23·33·43·53분 예약 실행을 시작합니다. 이 변수 설정 전에는 예약 실행을 건너뜁니다.
 6. 첫 전송 확인은 `Run workflow`에서 `live`를 실행합니다. 기준을 통과한 새 글이 없으면 0건이 정상입니다. 실행 결과의 Summary에서 게시판별 읽은 글·선별·전송 수를 확인합니다.
 
@@ -41,7 +66,7 @@ GitHub는 예약 실행이 혼잡 시 늦어지거나 누락될 수 있다고 �
 
 직접 켜 두고 싶으면 4번 대신 `start.cmd`를 실행하고 창을 유지하세요. 종료는 `Ctrl+C`입니다. 수동 실행과 자동 실행을 동시에 켜도 동일 폴더에서는 한 프로세스만 전송합니다. 서로 다른 복사본을 동시에 실행하면 중복 알림이 생길 수 있습니다.
 
-**이 Windows 방식은 PC가 켜져 있고 잠들지 않았으며, 등록한 Windows 계정이 로그인된 동안 작동합니다.** 화면 잠금은 괜찮지만 절전·종료·로그아웃 중에는 수집하지 않습니다. PC 없이 계속 받으려면 위 GitHub Actions 방식을 사용하세요.
+**이 Windows 방식은 PC가 켜져 있고 잠들지 않았으며, 등록한 Windows 계정이 로그인된 동안 작동합니다.** 화면 잠금은 괜찮지만 절전·종료·로그아웃 중에는 수집하지 않습니다. PC 없이 계속 받으려면 두 게시판 접속이 가능한 클라우드 실행 환경이 필요합니다. 현재 GitHub 러너의 접속 제한은 위 배포 상태를 참고하세요.
 
 Python 3.10 이상이 필요합니다. 설치된 Python 또는 현재 PC의 Codex 번들 Python을 자동으로 찾습니다. 없으면 [Python 공식 사이트](https://www.python.org/downloads/windows/)에서 설치합니다. 번들 Python을 사용할 경우 Codex 런타임 업데이트 뒤 가상환경을 다시 만들어야 할 수 있습니다.
 
