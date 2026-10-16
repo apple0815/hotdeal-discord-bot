@@ -1,0 +1,1682 @@
+diff --git a/game-news/.gitignore b/game-news/.gitignore
+new file mode 100644
+index 0000000..5b71b66
+--- /dev/null
++++ b/game-news/.gitignore
+@@ -0,0 +1,5 @@
++__pycache__/
++*.pyc
++state/
++reports/
++.env
+diff --git a/game-news/README.md b/game-news/README.md
+new file mode 100644
+index 0000000..c3b5d41
+--- /dev/null
++++ b/game-news/README.md
+@@ -0,0 +1,58 @@
++# 겜방 게임 소식 자동화
++
++기존 할인·게임 팁 자동화와 같은 GitHub Actions 저장소에 붙이는 독립 모듈입니다. 별도 유료 API나 상시 실행 PC 없이 작동하며, Discord 발신 이름은 `겜방 게임 소식`입니다. 채널마다 웹훅을 사용하므로 Discord 앱 봇 계정/슬래시 명령어는 필요하지 않습니다.
++
++| 기능 | 채널 | 한국 시간 |
++|---|---|---|
++| PUBG PC 이벤트 마감 | 배그-정보 | 매일 20:07, D-7 / D-3 / D-1에 각각 1회 |
++| PUBG PC 패치 요점 | 배그-정보 | 매일 09:07 / 21:07 확인, 새 내용만 게시 |
++| 같이 할 신작·데모 + 관심 투표 | 종합게임정보 | 금요일 20:07, 최대 3개, 72시간 복수 선택 투표 |
++
++GitHub 예약은 혼잡 시 늦어질 수 있습니다. 첫 배포 수동 실행은 현재 패치·해당 주 후보·당일 마감 단계만 게시합니다. 이미 지난 D-7 등을 몰아서 보내지 않습니다.
++
++## 기존 작업에 붙이기
++
++이 폴더에서 `.github`를 제외한 소스를 기존 저장소의 `game-news/`에 넣고, `.github/workflows/game-news.yml`은 저장소 루트의 같은 위치에 추가합니다. 기존 파일을 덮어쓸 필요가 없습니다.
++
++Repository Secrets:
++- `DISCORD_PUBG_NEWS_WEBHOOK_URL`: 배그-정보 채널
++- `DISCORD_GAME_DISCOVERY_WEBHOOK_URL`: 종합게임정보 채널
++
++Repository Variable `GAME_NEWS_ENABLED=true`가 예약 전송을 켭니다. 비활성화할 때 `false`로 바꾸세요. 수동 `send`는 이 변수와 별개이며 명시적 실행만 허용합니다. `preview`와 코드 push 검증은 게시하지 않습니다.
++
++전송 이력은 `game-news-state` 브랜치에 매 전송 전후 저장됩니다. 기존 할인·팁·단독 이벤트 모듈의 이력과 구분됩니다. 기존 단독 이벤트 자동화와 동시에 켜면 중복되므로 이 통합 버전만 활성화하세요.
++
++## 수집 범위와 정확성
++
++- 이벤트: PUBG 한국어 공식 공지에서 PC 종료 날짜·시간이 명시된 행사, 보상 수령, 재료 사용 등을 추출합니다. 이미지·표에만 있는 날짜, 시간대 불명확, PC방 전용, 별도 사이트 쿠폰/드롭스는 추측하지 않고 검토 목록으로 남깁니다. 모든 캠페인을 완전히 찾는 서비스는 아닙니다.
++- 패치: 공식 최신 패치의 밸런스·새 콘텐츠·편의성·플레이에 영향을 주는 버그 수정 문장을 선정·축약합니다. 콘솔 전용·상점·스킨은 제외합니다. AI 추론으로 메타를 단정하지 않습니다. 내용이 길면 생략 부호가 붙으며 원문 링크에서 수치·조건을 확인할 수 있습니다.
++- 신작: Steam 최근 30일 이내 출시 Windows 온라인 협동 게임과 데모에서 후보를 고릅니다. DLC, 출시 전, 로컬 멀티 전용은 제외합니다. 공식 영어 소개에서 인원/라운드 시간을 명시한 경우만 표시합니다. 크로스플레이 표기가 없는 경우 불가로 단정하지 않습니다. Steam의 지원 표기가 있어도 PC-콘솔 조합까지 추정하지 않습니다. 한국어 소개가 있으면 우선 사용합니다. 지난주 소개한 게임은 다시 추천하지 않습니다.
++- 모든 게시물은 전체/역할 멘션을 차단합니다. 외부 본문에 명령이 있어도 실행하지 않습니다.
++
++## 로컬 미리보기 및 검사
++
++Python 3.12 이상:
++
++```sh
++pip install -r requirements.txt
++python -m unittest discover -s tests -v
++python -m game_news --feature all
++python -m game_news --feature events --now 2026-10-16T20:00:00+09:00
++```
++
++`reports/preview.json`은 실제 Discord 요청 형태, `reports/report.json`은 출처·후보·검토 필요 항목입니다. 실제 전송에는 `--send`가 필요하며 `--now`와 같이 사용할 수 없습니다. 명령줄에 웹훅을 직접 적지 말고 환경변수/Secrets를 쓰세요.
++
++## 실패·중복 방지와 복구
++
++429만 제한적으로 재시도합니다. 연결 단절/서버 오류로 성공 여부를 모르면 `uncertain`으로 남기고 자동 재전송하지 않습니다. 기록 저장에 실패하면 게시하지 않습니다. 수집 오류가 난 기능은 보고서만 남기고 해당 전송을 보류하며, 다른 기능의 결과는 유지합니다.
++
++Discord에서 해당 메시지 존재 여부를 확인한 뒤 같은 상태 저장소에서:
++
++```sh
++python -m game_news --resolve KEY --resolution sent
++python -m game_news --resolve KEY --resolution retry
++```
++
++`sent`는 이미 게시됨을 확인했을 때, `retry`는 게시되지 않았음을 확인했을 때만 사용합니다. GitHub의 경우 `GITHUB_ACTIONS=true`, 해당 저장소 `GITHUB_REPOSITORY`, 쓰기 가능한 `GITHUB_TOKEN`이 있는 신뢰할 수 있는 환경에서 수행합니다. 상태 브랜치를 삭제하면 중복이 생길 수 있습니다. 잠금 파일 `state/.running`은 실제 실행 프로세스가 종료된 것을 확인한 경우에만 제거합니다.
++
++공식 문서: [PUBG 패치](https://pubg.com/ko/news?category=patch_notes), [Discord Webhook](https://docs.discord.com/developers/resources/webhook), [Discord Poll](https://docs.discord.com/developers/resources/poll).
+diff --git a/game-news/events-config.json b/game-news/events-config.json
+new file mode 100644
+index 0000000..538c9dc
+--- /dev/null
++++ b/game-news/events-config.json
+@@ -0,0 +1,12 @@
++{
++  "send_hour_kst": 20,
++  "listings": [
++    {"kind": "events", "url": "https://pubg.com/ko/events/notice?label=label_pc&size=20"},
++    {"kind": "news", "url": "https://pubg.com/ko/news?category=notice&label=label_pc&size=20&page=1"},
++    {"kind": "news", "url": "https://pubg.com/ko/news?category=notice&label=label_pc&size=20&page=2"},
++    {"kind": "news", "url": "https://pubg.com/ko/news?category=notice&label=label_pc&size=20&page=3"}
++  ],
++  "extra_sources": [
++    "https://pubg.com/ko/news/10991"
++  ]
++}
+diff --git a/game-news/game_news/__init__.py b/game-news/game_news/__init__.py
+new file mode 100644
+index 0000000..1b29182
+--- /dev/null
++++ b/game-news/game_news/__init__.py
+@@ -0,0 +1 @@
++"""Three gaming news features sharing one durable delivery service."""
+diff --git a/game-news/game_news/__main__.py b/game-news/game_news/__main__.py
+new file mode 100644
+index 0000000..a288322
+--- /dev/null
++++ b/game-news/game_news/__main__.py
+@@ -0,0 +1,89 @@
++import argparse
++from datetime import datetime
++import json
++import os
++from pathlib import Path
++
++from pubg_events.collector import collect as collect_events
++from pubg_events.core import due, payload as event_payload
++from .core import KST, Post, now_kst, payload
++from . import patches, discovery
++from .net import Client
++from .delivery import deliver, webhook_url
++from .state import GitHubState, State, LocalLock
++
++ROOT = Path(__file__).resolve().parent.parent
++SECRETS = {'events':'DISCORD_PUBG_NEWS_WEBHOOK_URL', 'patches':'DISCORD_PUBG_NEWS_WEBHOOK_URL', 'discovery':'DISCORD_GAME_DISCOVERY_WEBHOOK_URL'}
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument('--feature', choices=['all','events','patches','discovery'], default='all')
++    parser.add_argument('--send', action='store_true')
++    parser.add_argument('--now', help='Preview only: ISO8601 time')
++    parser.add_argument('--resolve', help='Delivery key to resolve after checking Discord')
++    parser.add_argument('--resolution', choices=['sent','retry'])
++    args = parser.parse_args()
++    if args.now and (args.send or args.resolve):
++        parser.error('--now is preview only')
++    if args.resolve and (args.send or not args.resolution):
++        parser.error('--resolve requires --resolution and cannot use --send')
++    now = datetime.fromisoformat(args.now) if args.now else now_kst()
++    if now.tzinfo is None:
++        now = now.replace(tzinfo=KST)
++    now = now.astimezone(KST)
++    output = ROOT/'reports'
++    output.mkdir(exist_ok=True)
++    report = {'checked_at':now.isoformat(), 'mode':'send' if args.send else 'preview', 'features':{}, 'sent':0}
++    previews = []
++    failed = False
++    with LocalLock(ROOT/'state'/'.running'):
++        store = GitHubState() if (args.send or args.resolve) and os.getenv('GITHUB_ACTIONS')=='true' else State(ROOT/'state'/'delivery-state.json')
++        if args.resolve:
++            if args.resolve not in store.data['posts']:
++                raise ValueError('Unknown delivery key')
++            if args.resolution=='retry':
++                del store.data['posts'][args.resolve]
++            else:
++                store.data['posts'][args.resolve]['status']='sent'
++            store.save()
++            return 0
++        for feature in (list(SECRETS) if args.feature=='all' else [args.feature]):
++            try:
++                url = webhook_url(os.getenv(SECRETS[feature],'')) if args.send else None
++                client = Client()
++                if feature=='events':
++                    config = json.loads((ROOT/'events-config.json').read_text(encoding='utf-8'))
++                    events, details = collect_events(client,config)
++                    posts = [Post(r.key,r.url,'pubg-events',event_payload(r)) for r in due(events,now,hour=20,respect_hour=args.send)]
++                    details['events'] = [e.record() for e in events]
++                elif feature=='patches':
++                    posts, details = patches.collect(client)
++                else:
++                    excluded = {appid for item in store.data['posts'].values() for appid in item.get('app_ids',[])}
++                    posts, details = discovery.collect(client,now,excluded)
++                pending = [p for p in posts if not store.seen(p)]
++                details['pending'] = len(pending)
++                details['keys'] = [p.key for p in pending]
++                report['features'][feature] = details
++                previews.extend([{'feature':feature,'key':p.key,'payload':payload(p)} for p in pending])
++                if details.get('errors'):
++                    # Partial collection is visible in the report, never silently delivered.
++                    failed = True
++                    continue
++                if args.send:
++                    report['sent'] += deliver(pending,store,url)
++            except Exception as exc:
++                failed = True
++                # Never include a transport URL or credential in a log.
++                report['features'].setdefault(feature,{})['failure'] = type(exc).__name__
++        report['review_needed'] = {k:v for k,v in store.data['posts'].items() if v['status'] in ('sending','uncertain')}
++        failed = failed or bool(report['review_needed'])
++        (output/'preview.json').write_text(json.dumps(previews,ensure_ascii=False,indent=2),encoding='utf-8')
++        (output/'report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
++        print(json.dumps({'mode':report['mode'],'sent':report['sent'],'features':{k:{x:v[x] for x in ('pending','errors','failure') if x in v} for k,v in report['features'].items()}},ensure_ascii=False))
++    return 1 if failed else 0
++
++
++if __name__=='__main__':
++    raise SystemExit(main())
+diff --git a/game-news/game_news/core.py b/game-news/game_news/core.py
+new file mode 100644
+index 0000000..4d52307
+--- /dev/null
++++ b/game-news/game_news/core.py
+@@ -0,0 +1,39 @@
++from dataclasses import dataclass
++from hashlib import sha256
++import re
++
++from pubg_events.core import KST, now_kst
++
++
++def digest(text):
++    return sha256(text.encode()).hexdigest()[:24]
++
++
++def clean(text):
++    return re.sub(r"\s+", " ", text).strip()
++
++
++def safe(text, limit=900):
++    text = clean(text).replace("@", "＠")
++    text = re.sub(r"([\\`*_~|<>])", r"\\\1", text)
++    return text if len(text) <= limit else text[:limit-1] + "…"
++
++
++@dataclass(frozen=True)
++class Post:
++    key: str
++    url: str
++    source: str
++    body: dict
++    app_ids: tuple = ()
++
++    @property
++    def fingerprint(self):
++        return self.key
++
++
++def payload(post):
++    result = dict(post.body)
++    result["username"] = "겜방 게임 소식"
++    result["allowed_mentions"] = {"parse": []}
++    return result
+diff --git a/game-news/game_news/delivery.py b/game-news/game_news/delivery.py
+new file mode 100644
+index 0000000..fd69624
+--- /dev/null
++++ b/game-news/game_news/delivery.py
+@@ -0,0 +1,75 @@
++import json
++import math
++import re
++import time
++from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
++
++from .core import now_kst, payload
++from .net import HTTPFailure, NetworkError, request
++
++
++class UncertainDelivery(RuntimeError):
++    pass
++
++
++def webhook_url(value):
++    p = urlsplit(value)
++    if p.scheme != "https" or p.hostname not in ("discord.com", "ptb.discord.com", "canary.discord.com") or p.port is not None or p.username or p.password or p.fragment or not re.fullmatch(r"/api(?:/v10)?/webhooks/\d+/[A-Za-z0-9_-]+", p.path):
++        raise ValueError("유효한 Discord 웹훅 주소가 필요합니다")
++    query = parse_qs(p.query)
++    params = {"wait": "true"}
++    if "thread_id" in query:
++        thread = query["thread_id"][0]
++        if not thread.isdigit():
++            raise ValueError("thread_id 형식 오류")
++        params["thread_id"] = thread
++    if set(query) - {"wait", "thread_id"}:
++        raise ValueError("지원하지 않는 웹훅 쿼리")
++    return urlunsplit(("https", p.hostname, p.path, urlencode(params), ""))
++
++
++def send_one(url, post, *, transport=request, sleep=time.sleep):
++    for attempt in range(4):
++        try:
++            raw, _ = transport(url, method="POST", data=json.dumps(payload(post), ensure_ascii=False).encode(), headers={"Content-Type": "application/json", "User-Agent": "PubgEventReminder/1.0"}, redirects=False)
++        except HTTPFailure as e:
++            if e.status == 429 and attempt < 3:
++                if not math.isfinite(e.retry_after) or e.retry_after > 60:
++                    raise
++                sleep(max(e.retry_after, 1) + 0.5)
++                continue
++            if e.status >= 500:
++                raise UncertainDelivery("서버 오류로 전송 여부가 불확실합니다") from None
++            raise
++        except NetworkError:
++            raise UncertainDelivery("연결 중단으로 전송 여부가 불확실합니다") from None
++        try:
++            message_id = json.loads(raw)["id"]
++            if not isinstance(message_id, str) or not message_id.isdigit():
++                raise ValueError
++        except (ValueError, KeyError, TypeError):
++            raise UncertainDelivery("Discord의 전송 확인 응답을 받지 못했습니다") from None
++        return message_id
++    raise RuntimeError("전송 재시도 초과")
++
++
++def deliver(posts, store, url, *, sender=send_one, sleep=time.sleep):
++    sent = 0
++    for post in posts:
++        if store.seen(post):
++            continue
++        # This must be durable before making the non-idempotent webhook call.
++        store.mark(post, "sending", attempted_at=now_kst().isoformat())
++        try:
++            message_id = sender(url, post)
++        except HTTPFailure:
++            # Discord explicitly rejected the request, so next scan may retry.
++            store.forget(post)
++            raise
++        except UncertainDelivery:
++            store.mark(post, "uncertain", attempted_at=now_kst().isoformat())
++            raise
++        store.mark(post, "sent", message_id=message_id, sent_at=now_kst().isoformat())
++        sent += 1
++        sleep(2.0)
++    return sent
+diff --git a/game-news/game_news/discovery.py b/game-news/game_news/discovery.py
+new file mode 100644
+index 0000000..54b5fe8
+--- /dev/null
++++ b/game-news/game_news/discovery.py
+@@ -0,0 +1,118 @@
++"""Recent Windows online multiplayer games/demos from publisher-owned Steam pages."""
++from datetime import datetime
++import re
++from bs4 import BeautifulSoup
++from .core import Post, digest, safe, clean
++
++SEARCH = 'https://store.steampowered.com/search/?sort_by=Released_DESC&category1={kind}&category3=38&ignore_preferences=1&l=english&cc=kr'
++UNKNOWN = '공식 정보 미확인'
++
++
++def search_ids(html):
++    soup = BeautifulSoup(html, 'html.parser')
++    cards = soup.select('a.search_result_row')
++    if not cards:
++        raise ValueError('Steam 신작 목록이 비었거나 구조 변경')
++    found = []
++    for card in cards:
++        match = re.match(r'https://store\.steampowered\.com/app/(\d+)/', card.get('href', ''))
++        if match and match[1] not in found:
++            found.append(match[1])
++    return found
++
++
++def facts(appid, data, now):
++    if data.get('type') not in ('game', 'demo') or not data.get('platforms', {}).get('windows'):
++        return None
++    categories = {x['id'] for x in data.get('categories', [])}
++    if not categories.intersection({36, 38}):
++        return None
++    if data.get('content_descriptors', {}).get('ids') and set(data['content_descriptors']['ids']).intersection({3,4}):
++        return None
++    date = data.get('release_date', {})
++    if date.get('coming_soon'):
++        return None
++    try:
++        released = datetime.strptime(date['date'], '%d %b, %Y').date()
++    except (KeyError, ValueError):
++        return None
++    if not 0 <= (now.date() - released).days <= 30:
++        return None
++    text = clean(BeautifulSoup(data.get('detailed_description', '') + ' ' + data.get('short_description',''), 'html.parser').get_text(' ',strip=True))
++    # Match explicit player claims only, not review counts or campaign length.
++    players = UNKNOWN
++    for pattern in (r'(\d{1,2})\s*[-–]\s*(\d{1,2})[ -]*(?:players?|person)', r'(?:up to|with up to|for up to)\s*(\d{1,2})\s*(?:players?|friends?)', r'(\d{1,2})[ -]*player\s+(?:co-op|coop|cooperative|multiplayer)'):
++        m = re.search(pattern, text, re.I)
++        if m:
++            nums = tuple(map(int, m.groups()))
++            if all(1 <= n <= 64 for n in nums):
++                players = (f'{nums[0]}–{nums[1]}명' if len(nums)==2 else f'최대 {nums[0]}명') + ' (공식 설명)'
++                break
++    duration = UNKNOWN
++    m = re.search(r'(?:rounds?|matches?|sessions?|runs?)\s+(?:last(?:ing)?|of|take|in|around|about|are)?\s*(\d{1,3}(?:\s*[-–]\s*\d{1,3})?)\s*(?:minutes?|mins?)|(?:\b)(\d{1,3}(?:\s*[-–]\s*\d{1,3})?)[ -]*minute\s+(?:rounds?|matches?|sessions?|runs?)', text, re.I)
++    if m:
++        duration = (m[1] or m[2]) + '분 (공식 설명)'
++    crossplay = '지원 표기 있음 · 플랫폼 조합은 원문 확인' if 27 in categories else UNKNOWN
++    return {'appid': str(appid), 'name': data['name'], 'url': f'https://store.steampowered.com/app/{appid}/',
++        'released': released.isoformat(), 'demo': data['type']=='demo', 'players':players,
++        'duration':duration, 'crossplay':crossplay, 'coop':38 in categories,
++        'description': clean(BeautifulSoup(data.get('short_description',''), 'html.parser').get_text(' ',strip=True))}
++
++
++def make_post(games, now):
++    if not games:
++        return None
++    week = now.isocalendar()
++    embeds = []
++    for i, game in enumerate(games[:3], 1):
++        embeds.append({'title': f'{i}. ' + safe(game['name'], 200) + (' · 데모' if game['demo'] else ''),
++            'url':game['url'], 'description':safe(game['description'], 450), 'color': 5763719,
++            'fields':[{'name':'몇 명 가능?', 'value':game['players'], 'inline':True},
++                {'name':'한 판 시간', 'value':game['duration'], 'inline':True},
++                {'name':'크로스플레이', 'value':game['crossplay']},
++                {'name':'유형 / 공개일', 'value':('온라인 협동' if game['coop'] else '온라인 멀티') + ' / ' + game['released']}],
++            'footer':{'text':'Steam 제작사 설명 기준 · 한글 지원/데모 멀티 범위는 상점 확인'}})
++    answers = [{'poll_media':{'text':f'{i}. ' + clean(g['name'])[:48]}} for i,g in enumerate(games[:3],1)]
++    answers.append({'poll_media':{'text':'이번 주는 패스'}})
++    body = {'content':'🎮 이번 주 같이 해볼 신작·데모 후보! 관심 있는 게임에 투표해 주세요. (72시간 · 복수 선택 가능)',
++        'embeds':embeds, 'poll':{'question':{'text':'이번 주 같이 해보고 싶은 게임은?'}, 'answers':answers,
++        'duration':72, 'allow_multiselect':True, 'layout_type':1}}
++    return Post(digest(f'discovery|{week.year}-W{week.week}'), games[0]['url'], 'steam-discovery', body, tuple(g['appid'] for g in games[:3]))
++
++
++def collect(client, now, excluded=()):
++    ids, errors = [], []
++    for kind in (998, 10):
++        try:
++            ids.extend(search_ids(client.text(SEARCH.format(kind=kind)))[:12])
++        except Exception as exc:
++            errors.append({'source':'Steam search', 'error':type(exc).__name__})
++    games = []
++    for appid in dict.fromkeys(ids):
++        if appid in excluded:
++            continue
++        try:
++            response = client.json(f'https://store.steampowered.com/api/appdetails?appids={appid}&l=english&cc=kr').get(appid, {})
++            if not response.get('success'):
++                continue
++            game = facts(appid, response['data'], now)
++            if game:
++                games.append(game)
++        except Exception as exc:
++            errors.append({'source':f'Steam app {appid}', 'error':type(exc).__name__})
++    # Prefer candidates whose party size is documented, mixing in a demo when available.
++    games.sort(key=lambda g:(g['players'] != UNKNOWN, g['coop'], g['released']), reverse=True)
++    picked = games[:3]
++    demos = [g for g in games if g['demo']]
++    if len(picked)==3 and demos and not any(g['demo'] for g in picked):
++        picked[-1] = demos[0]
++    for game in picked:
++        try:
++            translated = client.json(f'https://store.steampowered.com/api/appdetails?appids={game["appid"]}&l=koreana&cc=kr')
++            text = translated.get(game['appid'],{}).get('data',{}).get('short_description','')
++            if re.search(r'[가-힣]',text):
++                game['description'] = clean(BeautifulSoup(text,'html.parser').get_text(' ',strip=True))
++        except Exception:
++            pass  # Original publisher description remains available.
++    post = make_post(picked, now)
++    return ([post] if post else []), {'source_count':len(set(ids))+2, 'candidates':games, 'selected':picked, 'errors':errors}
+diff --git a/game-news/game_news/net.py b/game-news/game_news/net.py
+new file mode 100644
+index 0000000..2811764
+--- /dev/null
++++ b/game-news/game_news/net.py
+@@ -0,0 +1,63 @@
++"""Bounded HTTP requests; never print URLs containing credentials."""
++import json
++import time
++from urllib.error import HTTPError, URLError
++from urllib.request import HTTPRedirectHandler, Request, build_opener
++
++
++class NetworkError(RuntimeError):
++    pass
++
++
++class HTTPFailure(NetworkError):
++    def __init__(self, status, retry_after=0):
++        self.status, self.retry_after = status, retry_after
++        super().__init__(f"HTTP {status}")
++
++
++class NoRedirect(HTTPRedirectHandler):
++    def redirect_request(self, req, fp, code, msg, headers, newurl):
++        return None
++
++
++def request(url, *, data=None, headers=None, method=None, redirects=True):
++    req = Request(url, data=data, headers=headers or {}, method=method)
++    opener = build_opener() if redirects else build_opener(NoRedirect())
++    try:
++        with opener.open(req, timeout=25) as response:
++            raw = response.read(8_000_001)
++            if len(raw) > 8_000_000:
++                raise NetworkError("응답 크기 초과")
++            return raw, response.headers.get_content_charset() or "utf-8"
++    except HTTPError as e:
++        delay = 0
++        if e.code == 429:
++            try:
++                delay = float(json.loads(e.read(4096)).get("retry_after", 0))
++            except (ValueError, TypeError):
++                pass
++            try:
++                delay = max(delay, float(e.headers.get("Retry-After", "0")))
++            except ValueError:
++                pass
++        raise HTTPFailure(e.code, delay) from None
++    except (URLError, TimeoutError, OSError):
++        raise NetworkError("네트워크 연결 실패/시간 초과") from None
++
++
++class Client:
++    def __init__(self, delay=1.5, user_agent="PubgEventReminder/1.0 (official PUBG event deadlines)"):
++        self.delay, self.user_agent = delay, user_agent
++        self.last = 0.0
++
++    def get(self, url, headers=None):
++        time.sleep(max(0, self.last + self.delay - time.monotonic()))
++        self.last = time.monotonic()
++        return request(url, headers={"User-Agent": self.user_agent, **(headers or {})})
++
++    def text(self, url, headers=None):
++        raw, encoding = self.get(url, headers)
++        return raw.decode(encoding, errors="replace")
++
++    def json(self, url, headers=None):
++        return json.loads(self.text(url, headers))
+diff --git a/game-news/game_news/patches.py b/game-news/game_news/patches.py
+new file mode 100644
+index 0000000..2eeaf0a
+--- /dev/null
++++ b/game-news/game_news/patches.py
+@@ -0,0 +1,98 @@
++"""Extract PC gameplay changes from official patch notes; no inferred balance claims."""
++import json
++import re
++from bs4 import BeautifulSoup
++from pubg_events.collector import discover, own_text, canonical
++from .core import Post, clean, digest, safe
++
++LISTING = "https://pubg.com/ko/news?category=patch_notes&size=10"
++EXCLUDE = re.compile(r"Console|콘솔|스킨|콜라보|보급고|제작소|상점|이스포츠|하이라이트|맵 서비스|점검", re.I)
++BALANCE = re.compile(r"밸런스|총기|무기|전투|스폰|피해량|반동")
++IMPORTANT_BUG = re.compile(r"소생|크래시|충돌|진입|사망|위치|발소리|조준|피해|낙하산|끊김|멈추")
++
++
++def summarize(html, url):
++    canonical(url)
++    soup = BeautifulSoup(html, "html.parser")
++    article, title = soup.select_one('.content-template'), soup.select_one('.detail-header__title')
++    if not article or not title:
++        raise ValueError('패치 본문 구조 변경')
++    title = clean(title.get_text(' ', strip=True))
++    if not re.search(r'패치|업데이트', title):
++        raise ValueError('패치 공지가 아님')
++    groups = {'밸런스·전투 변화': [], '새 콘텐츠·플레이 편의': [], '주요 버그 수정': []}
++    headings, seen = {}, set()
++    for node in article.find_all(['h2', 'h3', 'h4', 'p', 'li']):
++        text = own_text(node)
++        if not text:
++            continue
++        if node.name.startswith('h'):
++            level = int(node.name[1])
++            headings = {k:v for k,v in headings.items() if k < level}
++            headings[level] = text
++            continue
++        path = ' / '.join(headings.values())
++        if EXCLUDE.search(path) or re.search(r'Console|콘솔|개발자 코멘트', text, re.I):
++            continue
++        if node.find_parent('li') or text.startswith(('※', '*')) or len(text) < 18:
++            continue
++        # A parent list item includes its children to preserve numerical context.
++        if node.name == 'li':
++            text = clean(node.get_text(' ', strip=True))
++        if re.search(r'Console|콘솔', text, re.I):
++            continue
++        if '버그 수정' in path:
++            if node.name != 'li' or not IMPORTANT_BUG.search(text):
++                continue
++            group = '주요 버그 수정'
++            label = ''
++        elif BALANCE.search(path):
++            if node.name != 'li':
++                continue
++            group = '밸런스·전투 변화'
++            label = headings.get(3, headings.get(2, ''))
++        else:
++            group = '새 콘텐츠·플레이 편의'
++            label = headings.get(4, headings.get(3, headings.get(2, '')))
++            if not re.search(r'추가|개선|신규|등장|업데이트|변경|가동|살아남', text):
++                continue
++        if text in seen:
++            continue
++        seen.add(text)
++        groups[group].append((label, text, node.name))
++    fields = []
++    for name, entries in groups.items():
++        # Keep different topics represented rather than taking the first paragraphs.
++        chosen, topics = [], {}
++        if name == '주요 버그 수정':
++            entries.sort(key=lambda item: bool(re.search(r'소생|크래시|진입|실제 위치',item[1])), reverse=True)
++        elif name == '새 콘텐츠·플레이 편의':
++            def relevance(item):
++                label,text,tag=item
++                return (3 if re.search(r'신규 모드|SLB|로비|팀 무작위|매치 강제|메시지 래디얼',label) else 0) + (2 if tag=='li' else 0) + (1 if re.search(r'추가|300m|레디|팀원|단축키',text) else 0)
++            entries.sort(key=relevance,reverse=True)
++        for label, text, tag in entries:
++            if label and topics.get(label,0) >= (3 if name == '밸런스·전투 변화' else 1):
++                continue
++            topics[label] = topics.get(label,0)+1
++            chosen.append((label, text))
++            if len(chosen) == (4 if name == '주요 버그 수정' else 5):
++                break
++        if chosen:
++            lines = ['• ' + (safe(label, 45) + ': ' if label else '') + safe(text, 180) for label, text in chosen]
++            fields.append({'name': name, 'value': '\n'.join(lines)[:1024]})
++    if not fields:
++        raise ValueError('PC 변경 사항을 추출하지 못함')
++    body = {'embeds': [{'title': safe(title, 220) + ' · PC 요점', 'url': url,
++        'description': '스팀·카카오 PC 공통 패치에서 플레이 관련 변경을 추렸어요. 세부 수치와 적용 조건은 원문을 확인해 주세요.',
++        'color': 15844367, 'fields': fields, 'footer': {'text': '공식 공지 자동 발췌 · 콘솔 전용·판매/스킨 제외'}}]}
++    key = digest('patch|' + url + '|' + json.dumps(fields, ensure_ascii=False, sort_keys=True))
++    return Post(key, url, 'pubg-patch', body)
++
++
++def collect(client):
++    urls = discover(client.text(LISTING), 'patches')
++    if not urls:
++        raise ValueError('패치 목록 비어 있음')
++    # Latest only on bootstrap avoids flooding the channel with historical notes.
++    return [summarize(client.text(urls[0]), urls[0])], {'source_count': 2, 'errors': []}
+diff --git a/game-news/game_news/state.py b/game-news/game_news/state.py
+new file mode 100644
+index 0000000..3f249cd
+--- /dev/null
++++ b/game-news/game_news/state.py
+@@ -0,0 +1,113 @@
++import base64
++import json
++import os
++import re
++from pathlib import Path
++from urllib.parse import quote
++
++from .net import HTTPFailure, NetworkError, request
++
++
++def validate(data):
++    if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("posts"), dict):
++        raise ValueError("전송 기록 형식 오류. 기록을 복구한 뒤 실행하세요.")
++    for key, item in data["posts"].items():
++        if not re.fullmatch(r"[a-f0-9]{24}", key) or not isinstance(item, dict) or item.get("status") not in ("sending", "sent", "uncertain"):
++            raise ValueError("전송 기록 손상. 자동 전송을 중단합니다.")
++    return data
++
++
++class State:
++    def __init__(self, path="state/state.json"):
++        self.path = Path(path)
++        self.data = validate(json.loads(self.path.read_text(encoding="utf-8"))) if self.path.exists() else {"version": 1, "posts": {}}
++
++    def save(self):
++        validate(self.data)
++        self.path.parent.mkdir(parents=True, exist_ok=True)
++        temp = self.path.with_suffix(".tmp")
++        with temp.open("w", encoding="utf-8") as f:
++            json.dump(self.data, f, ensure_ascii=False, indent=2)
++            f.flush()
++            os.fsync(f.fileno())
++        os.replace(temp, self.path)
++
++    def seen(self, post):
++        return post.key in self.data["posts"] or any(x.get("fingerprint") == post.fingerprint for x in self.data["posts"].values())
++
++    def mark(self, post, status, **extra):
++        # Keep identifiers, fingerprints and delivery status; do not retain full bodies.
++        self.data["posts"][post.key] = {"status": status, "fingerprint": post.fingerprint, "url": post.url, "source": post.source, "app_ids": getattr(post, "app_ids", []), **extra}
++        self.save()
++
++    def forget(self, post):
++        self.data["posts"].pop(post.key, None)
++        self.save()
++
++
++class GitHubState(State):
++    """Persist BEFORE and AFTER each send, not only at the end of an Actions job."""
++    def __init__(self):
++        repo = os.environ.get("GITHUB_REPOSITORY", "")
++        token = os.environ.get("GITHUB_TOKEN", "")
++        if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo) or not token:
++            raise ValueError("GitHub 전송 기록 저장에 필요한 설정이 없습니다")
++        self.base = f"https://api.github.com/repos/{repo}"
++        self.headers = {"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json", "User-Agent": "PubgEventReminder/1.0", "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28"}
++        self.sha = None
++        self.branch_exists = False
++        try:
++            self.api("/git/ref/heads/game-news-state")
++            self.branch_exists = True
++        except HTTPFailure as e:
++            if e.status != 404:
++                raise
++        self.data = {"version": 1, "posts": {}}
++        if self.branch_exists:
++            try:
++                doc = self.api("/contents/delivery-state.json?ref=game-news-state")
++                self.sha = doc["sha"]
++                self.data = validate(json.loads(base64.b64decode(doc["content"]).decode("utf-8")))
++            except HTTPFailure as e:
++                if e.status != 404:
++                    raise
++                # A missing file on an existing state branch may mean lost history.
++                raise ValueError("game-news-state 브랜치의 기록 파일이 없습니다. 복구 후 실행하세요.") from None
++
++    def api(self, path, method="GET", data=None):
++        raw, _ = request(self.base + path, headers=self.headers, method=method, data=json.dumps(data).encode() if data is not None else None, redirects=False)
++        return json.loads(raw)
++
++    def save(self):
++        validate(self.data)
++        content = base64.b64encode(json.dumps(self.data, ensure_ascii=False, indent=2).encode()).decode()
++        if not self.branch_exists:
++            # Create an orphan state commit with its file, then attach a branch.
++            # If killed during initialization, no visible empty state branch is left.
++            blob = self.api("/git/blobs", "POST", {"content": content, "encoding": "base64"})
++            tree = self.api("/git/trees", "POST", {"tree": [{"path": "delivery-state.json", "mode": "100644", "type": "blob", "sha": blob["sha"]}]})
++            commit = self.api("/git/commits", "POST", {"message": "Initialize delivery history", "tree": tree["sha"], "parents": []})
++            self.api("/git/refs", "POST", {"ref": "refs/heads/game-news-state", "sha": commit["sha"]})
++            self.branch_exists, self.sha = True, blob["sha"]
++            return
++        result = self.api("/contents/delivery-state.json", "PUT", {"message": "Save delivery history", "content": content, "branch": "game-news-state", "sha": self.sha})
++        self.sha = result["content"]["sha"]
++
++
++class LocalLock:
++    def __init__(self, path):
++        self.path = Path(path)
++
++    def __enter__(self):
++        self.path.parent.mkdir(parents=True, exist_ok=True)
++        try:
++            fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
++        except FileExistsError:
++            raise ValueError("다른 실행이 진행 중이거나 잠금 파일이 남았습니다. README 복구 안내를 확인하세요.") from None
++        with os.fdopen(fd, "w") as f:
++            f.write(str(os.getpid()))
++        return self
++
++    def __exit__(self, *_):
++        self.path.unlink(missing_ok=True)
++
+diff --git a/game-news/pubg_events/__init__.py b/game-news/pubg_events/__init__.py
+new file mode 100644
+index 0000000..943a8e2
+--- /dev/null
++++ b/game-news/pubg_events/__init__.py
+@@ -0,0 +1 @@
++"""PUBG PC official event deadline reminders."""
+diff --git a/game-news/pubg_events/__main__.py b/game-news/pubg_events/__main__.py
+new file mode 100644
+index 0000000..7e9e921
+--- /dev/null
++++ b/game-news/pubg_events/__main__.py
+@@ -0,0 +1,80 @@
++import argparse
++from datetime import datetime
++import json
++import os
++from pathlib import Path
++
++from .collector import collect
++from .core import KST, due, now_kst, payload
++from .delivery import UncertainDelivery, deliver, webhook_url
++from .net import Client, NetworkError
++from .state import GitHubState, LocalLock, State
++
++ROOT = Path(__file__).resolve().parent.parent
++
++
++def main():
++    parser = argparse.ArgumentParser(description="PUBG PC D-7 / D-3 / D-1 reminders")
++    modes = parser.add_mutually_exclusive_group()
++    modes.add_argument("--send", action="store_true")
++    modes.add_argument("--dry-run", action="store_true")
++    modes.add_argument("--resolve", metavar="KEY")
++    parser.add_argument("--resolution", choices=("sent", "retry"))
++    parser.add_argument("--now", help="미리보기용 한국 시각 ISO 8601; 실제 전송에서는 금지")
++    parser.add_argument("--config", type=Path, default=ROOT / "config.json")
++    args = parser.parse_args()
++    if args.now and (args.send or args.resolve):
++        parser.error("--now는 미리보기에서만 사용할 수 있습니다")
++    config = json.loads(args.config.read_text(encoding="utf-8"))
++    now = datetime.fromisoformat(args.now) if args.now else now_kst()
++    if now.tzinfo is None:
++        now = now.replace(tzinfo=KST)
++    output = ROOT / "reports"
++    output.mkdir(parents=True, exist_ok=True)
++    report = {"mode": "send" if args.send else "preview", "checked_at": now.isoformat(), "sent": 0}
++    with LocalLock(ROOT / "state" / ".running"):
++        try:
++            if args.send or args.resolve:
++                # A token is deliberately only loaded for explicit write modes.
++                store = GitHubState() if os.environ.get("GITHUB_ACTIONS") == "true" else State(ROOT / "state" / "delivery-state.json")
++            else:
++                store = State(ROOT / "state" / "delivery-state.json")
++            if args.resolve:
++                if args.resolve not in store.data["posts"] or not args.resolution:
++                    raise ValueError("존재하는 기록 키와 sent/retry 선택이 필요합니다")
++                if args.resolution == "sent":
++                    store.data["posts"][args.resolve]["status"] = "sent"
++                else:
++                    del store.data["posts"][args.resolve]
++                store.save()
++                print("전송 기록을 수정했습니다")
++                return 0
++            # Validate destination before fetching. Never log the secret URL.
++            url = webhook_url(os.environ.get("DISCORD_EVENTS_WEBHOOK_URL", "")) if args.send else None
++            events, source_report = collect(Client(), config)
++            report.update(source_report)
++            report["event_count"] = len(events)
++            report["events"] = [event.record() for event in sorted(events, key=lambda e: e.deadline)]
++            reminders = due(events, now, hour=config.get("send_hour_kst", 20), respect_hour=args.send)
++            reminders = [r for r in reminders if not store.seen(r)]
++            report["due_count"] = len(reminders)
++            report["due_keys"] = [r.key for r in reminders]
++            (output / "preview.json").write_text(json.dumps([payload(r) for r in reminders], ensure_ascii=False, indent=2), encoding="utf-8")
++            if args.send:
++                report["sent"] = deliver(reminders, store, url)
++            report["review_needed"] = {k: v for k, v in store.data["posts"].items() if v["status"] in ("sending", "uncertain")}
++            print(json.dumps({k: report[k] for k in ("mode", "source_count", "event_count", "due_count", "sent", "errors")}, ensure_ascii=False))
++            return 1 if report["errors"] or report["review_needed"] else 0
++        except (ValueError, NetworkError, UncertainDelivery) as exc:
++            # Exceptions from transport contain neither a webhook nor token.
++            report["failure"] = type(exc).__name__
++            print("실행 실패: " + type(exc).__name__ + "; reports/report.json 및 전송 기록을 확인하세요")
++            return 1
++        finally:
++            if "store" in locals():
++                report["review_needed"] = {k: v for k, v in store.data["posts"].items() if v["status"] in ("sending", "uncertain")}
++            (output / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+diff --git a/game-news/pubg_events/collector.py b/game-news/pubg_events/collector.py
+new file mode 100644
+index 0000000..f3dc2ea
+--- /dev/null
++++ b/game-news/pubg_events/collector.py
+@@ -0,0 +1,180 @@
++"""Conservative extraction from the official Korean PUBG website.
++
++Only explicit PC date ranges inside the article body are accepted. Listing
++header dates, console dates, sale periods and ambiguous times are excluded.
++Unrecognized relevant articles are returned for review, never silently guessed.
++"""
++from datetime import datetime
++import re
++from urllib.parse import urlsplit, urlunsplit
++
++from bs4 import BeautifulSoup
++
++from .core import Event, KST, clean, digest
++
++BASE = "https://pubg.com"
++DATE = re.compile(r"(?<!\d)(?P<year>20\d{2}|\d{2})[/.-](?P<month>\d{1,2})[/.-](?P<day>\d{1,2})\s*[,，]?\s*(?P<hour>\d{1,2}):(?P<minute>\d{2})(?!\d)")
++INTEREST = re.compile(r"특별 보급|이벤트|콜라보|PUBG\s*x\s*|패스|드롭스|쿠폰|시즌|상점|보상", re.I)
++META = re.compile(r"^(?:미션|이벤트 안내|총 획득 가능한 보상|획득 가능한 보상|보상|유의사항|유의 사항|이벤트 기간|판매 기간|운영 기간|서비스 기간|교환 기간|보상 수령 기간|수령 기간|특수 제작 탭 운영 종료일)$")
++PERIOD = re.compile(r"(?:기간|종료일|마감일)$")
++
++
++def canonical(url):
++    p = urlsplit(url)
++    if p.scheme != "https" or p.hostname not in ("pubg.com", "www.pubg.com") or not re.fullmatch(r"/ko/(?:events/notice|news)/\d+", p.path):
++        raise ValueError("PUBG 한국어 공식 공지 주소만 지원합니다")
++    return urlunsplit(("https", "pubg.com", p.path, "", ""))
++
++
++def discover(html, kind):
++    """Read literal IDs from Nuxt SSR data; never execute website JavaScript."""
++    soup = BeautifulSoup(html, "html.parser")
++    cards = soup.select(".post-contents__card")
++    scripts = " ".join(s.get_text() for s in soup.select("script") if "window.__NUXT__=" in s.get_text())
++    ids = list(dict.fromkeys(re.findall(r"\bpostId:(\d+)", scripts)))
++    if not cards or len(cards) != len(ids):
++        raise ValueError("공식 목록 구조가 변경됐거나 목록이 비었습니다")
++    found = []
++    for card, post_id in zip(cards, ids):
++        title_node = card.select_one(".post__title")
++        title = clean(title_node.get_text(" ", strip=True) if title_node else card.get_text(" ", strip=True))
++        if kind == "news" and not INTEREST.search(title):
++            continue
++        # Some notices are explicitly console-only.
++        if card.select(".label--console") and not card.select(".label--pc"):
++            continue
++        path = "events/notice" if kind == "events" else "news"
++        found.append(f"{BASE}/ko/{path}/{post_id}")
++    return found
++
++
++def own_text(node):
++    # Exclude nested list items so a parent does not repeat console/PC rows.
++    clone = BeautifulSoup(str(node), "html.parser").find(node.name)
++    if node.name == "li":
++        for child in clone.find_all(["ul", "ol"]):
++            child.decompose()
++    elif node.name.startswith("h"):
++        for child in clone.find_all(["p", "li", "ul", "ol", "table", "h1", "h2", "h3", "h4"]):
++            child.decompose()
++    return clean(clone.get_text(" ", strip=True))
++
++
++def parse_article(html, url):
++    url = canonical(url)
++    soup = BeautifulSoup(html, "html.parser")
++    article = soup.select_one(".content-template")
++    title_node = soup.select_one(".detail-header__title")
++    if article is None or title_node is None:
++        raise ValueError("공식 공지 본문 구조를 찾을 수 없습니다")
++    page_title = clean(title_node.get_text(" ", strip=True))
++    header = soup.select_one(".detail-header")
++    if header and "detail-header--console" in header.get("class", []) and "detail-header--pc" not in header.get("class", []):
++        return [], []
++    # Platform-specific campaign exceptions require separate adapters.
++    if "PC방" in page_title:
++        return [], [f"PC방별 참여 조건 확인 필요: {url}"]
++    headings = {}
++    label = ""
++    missions, rewards = [], []
++    events = {}
++    warnings = []
++    for node in article.find_all(["h1", "h2", "h3", "h4", "p", "li"]):
++        if node.name == "p" and node.find_parent("li"):
++            continue
++        text = own_text(node)
++        if not text:
++            continue
++        if node.name.startswith("h"):
++            # Some publisher paragraphs are mistakenly styled as long h2s.
++            if len(text) > 90:
++                continue
++            if META.fullmatch(text) or PERIOD.search(text) and len(text) < 45:
++                label = text
++            else:
++                level = int(node.name[1])
++                headings = {k: v for k, v in headings.items() if k < level}
++                headings[level] = text
++                label = ""
++                missions, rewards = [], []
++            continue
++        if META.fullmatch(text) or PERIOD.search(text) and len(text) < 45:
++            label = text
++            continue
++        if not re.match(r"^PC\s*[:：]", text, re.I):
++            if node.name == "li":
++                if label == "미션":
++                    missions.append(text)
++                elif "보상" in label and "기간" not in label:
++                    rewards.append(text)
++            continue
++        pc = re.split(r"Console\s*[:：]", text, flags=re.I)[0]
++        context = " / ".join(headings.values()) or page_title
++        if "판매" in label:
++            continue
++        if not label or not PERIOD.search(label):
++            warnings.append(f"기간 종류 확인 필요 ({context}): {url}")
++            continue
++        if re.search(r"\b(?:UTC|PDT|PST)\b", pc, re.I):
++            warnings.append(f"한국 시간 이외 시간대 확인 필요 ({context}): {url}")
++            continue
++        # Range end must be a complete date plus exact clock time.
++        tail = re.search(r"\s[-–~]\s*(.+)$", pc)
++        match = DATE.fullmatch(tail[1].strip().rstrip(".")) if tail else None
++        if not match:
++            warnings.append(f"정확한 종료 일시 확인 필요 ({context}): {url}")
++            continue
++        parts = {k: int(v) for k, v in match.groupdict().items()}
++        if parts["year"] < 100:
++            parts["year"] += 2000
++        try:
++            ending = datetime(**parts, tzinfo=KST)
++        except ValueError:
++            warnings.append(f"유효하지 않은 날짜 ({context}): {url}")
++            continue
++        if "특수 제작" in label or "특수 제작" in context:
++            kind = "재료 사용·특수 제작 마감"
++            action = "제작소의 해당 특수 제작 탭에서 남은 재료를 사용하세요. 재료별 사용 조건은 공식 공지를 확인하세요."
++        elif "수령" in label:
++            kind = "보상 수령 마감"
++            action = "이벤트 페이지에서 달성한 보상의 수령 여부를 확인하세요."
++        elif "교환" in label:
++            kind = "보상 교환 마감"
++            action = "이벤트 페이지에서 남은 포인트와 교환 가능한 보상을 확인하세요."
++        else:
++            kind = "이벤트 참여 마감"
++            action = "로비 또는 공식 이벤트 페이지에서 남은 미션과 참여 조건을 확인하세요."
++        title = context
++        if "특별 보급" not in page_title and page_title not in title:
++            title = f"{page_title} · {title}"
++        condition_key = ""
++        if missions and rewards:
++            # Merge repeated monthly/collaboration notices only when their
++            # section name, mission text and reward text all match exactly.
++            short_name = list(headings.values())[-1] if headings else page_title
++            condition_key = digest("|".join([short_name, *sorted(missions), "REWARDS", *sorted(rewards)]))
++        event = Event(title, kind, ending, url, action, pc, condition_key)
++        events[(event.identity, ending)] = event
++    if not events and not warnings:
++        warnings.append(f"자동 추출 가능한 PC 종료 일시 없음: {url}")
++    return list(events.values()), list(dict.fromkeys(warnings))
++
++
++def collect(client, config):
++    urls = set(canonical(u) for u in config.get("extra_sources", []))
++    errors, review = [], []
++    for listing in config["listings"]:
++        try:
++            urls.update(discover(client.text(listing["url"]), listing["kind"]))
++        except (RuntimeError, ValueError) as exc:
++            errors.append(f"목록 수집 실패: {listing['url']} ({type(exc).__name__})")
++    events = {}
++    for url in sorted(urls):
++        try:
++            extracted, notes = parse_article(client.text(url), url)
++            for event in extracted:
++                events.setdefault((event.identity, event.deadline), event)
++            review.extend(notes)
++        except (RuntimeError, ValueError) as exc:
++            errors.append(f"본문 수집 실패: {url} ({type(exc).__name__})")
++    return list(events.values()), {"source_count": len(urls), "errors": errors, "review": sorted(set(review))}
+diff --git a/game-news/pubg_events/core.py b/game-news/pubg_events/core.py
+new file mode 100644
+index 0000000..25377ca
+--- /dev/null
++++ b/game-news/pubg_events/core.py
+@@ -0,0 +1,106 @@
++from dataclasses import asdict, dataclass
++from datetime import datetime, timedelta, timezone
++import hashlib
++import re
++
++KST = timezone(timedelta(hours=9))
++STAGES = (7, 3, 1)
++
++
++def now_kst():
++    return datetime.now(KST)
++
++
++def digest(value):
++    return hashlib.sha256(value.encode()).hexdigest()[:24]
++
++
++def clean(value):
++    return re.sub(r"\s+", " ", value).strip()
++
++
++def safe_text(value):
++    return re.sub(r"([\\`*_~|<>\[\]])", r"\\\1", clean(value))
++
++
++@dataclass(frozen=True)
++class Event:
++    title: str
++    kind: str
++    deadline: datetime
++    url: str
++    action: str
++    evidence: str
++    condition_key: str = ""
++
++    def __post_init__(self):
++        if self.deadline.tzinfo is None:
++            raise ValueError("종료 시각에 시간대가 필요합니다")
++
++    @property
++    def identity(self):
++        if self.condition_key:
++            return digest(f"{self.condition_key}|{self.kind}")
++        return digest(f"{self.url}|{self.title}|{self.kind}")
++
++    def record(self):
++        return {**asdict(self), "deadline": self.deadline.isoformat()}
++
++
++@dataclass(frozen=True)
++class Reminder:
++    event: Event
++    days: int
++
++    @property
++    def key(self):
++        return digest(f"{self.event.identity}|{self.event.deadline.isoformat()}|D-{self.days}")
++
++    @property
++    def fingerprint(self):
++        return self.key
++
++    @property
++    def url(self):
++        return self.event.url
++
++    @property
++    def source(self):
++        return "pubg-official-events"
++
++
++def due(events, now, *, hour=20, respect_hour=True):
++    """Korean calendar D-7/D-3/D-1; never backfill missed stages."""
++    now = now.astimezone(KST)
++    if respect_hour and now.hour < hour:
++        return []
++    result = {}
++    for event in events:
++        if event.deadline <= now:
++            continue
++        days = (event.deadline.astimezone(KST).date() - now.date()).days
++        if days in STAGES:
++            reminder = Reminder(event, days)
++            result[reminder.key] = reminder
++    return sorted(result.values(), key=lambda r: (r.event.deadline, r.event.title))
++
++
++def payload(reminder):
++    event = reminder.event
++    ending = event.deadline.astimezone(KST)
++    return {
++        "username": "게임 소식 알리미",
++        "allowed_mentions": {"parse": []},
++        "embeds": [{
++            "title": f"⏰ [배그 PC · D-{reminder.days}] {safe_text(event.title)}"[:256],
++            "url": event.url,
++            "color": {7: 0xF2AA00, 3: 0xF07C22, 1: 0xE74C3C}[reminder.days],
++            "description": safe_text(event.action)[:1200],
++            "fields": [
++                {"name": "마감", "value": ending.strftime("%Y년 %m월 %d일 %H:%M · 한국 시간"), "inline": False},
++                {"name": "구분", "value": safe_text(event.kind), "inline": True},
++                {"name": "대상", "value": "PC · 플랫폼별 참여 조건은 원문 확인", "inline": True},
++            ],
++            "footer": {"text": "공식 공지 기준 · D-7 / D-3 / D-1 알림 · 참여·보상 조건은 원문 확인"},
++        }],
++    }
+diff --git a/game-news/pubg_events/delivery.py b/game-news/pubg_events/delivery.py
+new file mode 100644
+index 0000000..fd69624
+--- /dev/null
++++ b/game-news/pubg_events/delivery.py
+@@ -0,0 +1,75 @@
++import json
++import math
++import re
++import time
++from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
++
++from .core import now_kst, payload
++from .net import HTTPFailure, NetworkError, request
++
++
++class UncertainDelivery(RuntimeError):
++    pass
++
++
++def webhook_url(value):
++    p = urlsplit(value)
++    if p.scheme != "https" or p.hostname not in ("discord.com", "ptb.discord.com", "canary.discord.com") or p.port is not None or p.username or p.password or p.fragment or not re.fullmatch(r"/api(?:/v10)?/webhooks/\d+/[A-Za-z0-9_-]+", p.path):
++        raise ValueError("유효한 Discord 웹훅 주소가 필요합니다")
++    query = parse_qs(p.query)
++    params = {"wait": "true"}
++    if "thread_id" in query:
++        thread = query["thread_id"][0]
++        if not thread.isdigit():
++            raise ValueError("thread_id 형식 오류")
++        params["thread_id"] = thread
++    if set(query) - {"wait", "thread_id"}:
++        raise ValueError("지원하지 않는 웹훅 쿼리")
++    return urlunsplit(("https", p.hostname, p.path, urlencode(params), ""))
++
++
++def send_one(url, post, *, transport=request, sleep=time.sleep):
++    for attempt in range(4):
++        try:
++            raw, _ = transport(url, method="POST", data=json.dumps(payload(post), ensure_ascii=False).encode(), headers={"Content-Type": "application/json", "User-Agent": "PubgEventReminder/1.0"}, redirects=False)
++        except HTTPFailure as e:
++            if e.status == 429 and attempt < 3:
++                if not math.isfinite(e.retry_after) or e.retry_after > 60:
++                    raise
++                sleep(max(e.retry_after, 1) + 0.5)
++                continue
++            if e.status >= 500:
++                raise UncertainDelivery("서버 오류로 전송 여부가 불확실합니다") from None
++            raise
++        except NetworkError:
++            raise UncertainDelivery("연결 중단으로 전송 여부가 불확실합니다") from None
++        try:
++            message_id = json.loads(raw)["id"]
++            if not isinstance(message_id, str) or not message_id.isdigit():
++                raise ValueError
++        except (ValueError, KeyError, TypeError):
++            raise UncertainDelivery("Discord의 전송 확인 응답을 받지 못했습니다") from None
++        return message_id
++    raise RuntimeError("전송 재시도 초과")
++
++
++def deliver(posts, store, url, *, sender=send_one, sleep=time.sleep):
++    sent = 0
++    for post in posts:
++        if store.seen(post):
++            continue
++        # This must be durable before making the non-idempotent webhook call.
++        store.mark(post, "sending", attempted_at=now_kst().isoformat())
++        try:
++            message_id = sender(url, post)
++        except HTTPFailure:
++            # Discord explicitly rejected the request, so next scan may retry.
++            store.forget(post)
++            raise
++        except UncertainDelivery:
++            store.mark(post, "uncertain", attempted_at=now_kst().isoformat())
++            raise
++        store.mark(post, "sent", message_id=message_id, sent_at=now_kst().isoformat())
++        sent += 1
++        sleep(2.0)
++    return sent
+diff --git a/game-news/pubg_events/net.py b/game-news/pubg_events/net.py
+new file mode 100644
+index 0000000..2811764
+--- /dev/null
++++ b/game-news/pubg_events/net.py
+@@ -0,0 +1,63 @@
++"""Bounded HTTP requests; never print URLs containing credentials."""
++import json
++import time
++from urllib.error import HTTPError, URLError
++from urllib.request import HTTPRedirectHandler, Request, build_opener
++
++
++class NetworkError(RuntimeError):
++    pass
++
++
++class HTTPFailure(NetworkError):
++    def __init__(self, status, retry_after=0):
++        self.status, self.retry_after = status, retry_after
++        super().__init__(f"HTTP {status}")
++
++
++class NoRedirect(HTTPRedirectHandler):
++    def redirect_request(self, req, fp, code, msg, headers, newurl):
++        return None
++
++
++def request(url, *, data=None, headers=None, method=None, redirects=True):
++    req = Request(url, data=data, headers=headers or {}, method=method)
++    opener = build_opener() if redirects else build_opener(NoRedirect())
++    try:
++        with opener.open(req, timeout=25) as response:
++            raw = response.read(8_000_001)
++            if len(raw) > 8_000_000:
++                raise NetworkError("응답 크기 초과")
++            return raw, response.headers.get_content_charset() or "utf-8"
++    except HTTPError as e:
++        delay = 0
++        if e.code == 429:
++            try:
++                delay = float(json.loads(e.read(4096)).get("retry_after", 0))
++            except (ValueError, TypeError):
++                pass
++            try:
++                delay = max(delay, float(e.headers.get("Retry-After", "0")))
++            except ValueError:
++                pass
++        raise HTTPFailure(e.code, delay) from None
++    except (URLError, TimeoutError, OSError):
++        raise NetworkError("네트워크 연결 실패/시간 초과") from None
++
++
++class Client:
++    def __init__(self, delay=1.5, user_agent="PubgEventReminder/1.0 (official PUBG event deadlines)"):
++        self.delay, self.user_agent = delay, user_agent
++        self.last = 0.0
++
++    def get(self, url, headers=None):
++        time.sleep(max(0, self.last + self.delay - time.monotonic()))
++        self.last = time.monotonic()
++        return request(url, headers={"User-Agent": self.user_agent, **(headers or {})})
++
++    def text(self, url, headers=None):
++        raw, encoding = self.get(url, headers)
++        return raw.decode(encoding, errors="replace")
++
++    def json(self, url, headers=None):
++        return json.loads(self.text(url, headers))
+diff --git a/game-news/pubg_events/state.py b/game-news/pubg_events/state.py
+new file mode 100644
+index 0000000..cdf1b66
+--- /dev/null
++++ b/game-news/pubg_events/state.py
+@@ -0,0 +1,112 @@
++import base64
++import json
++import os
++import re
++from pathlib import Path
++from urllib.parse import quote
++
++from .net import HTTPFailure, NetworkError, request
++
++
++def validate(data):
++    if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("posts"), dict):
++        raise ValueError("전송 기록 형식 오류. 기록을 복구한 뒤 실행하세요.")
++    for key, item in data["posts"].items():
++        if not re.fullmatch(r"[a-f0-9]{24}", key) or not isinstance(item, dict) or item.get("status") not in ("sending", "sent", "uncertain"):
++            raise ValueError("전송 기록 손상. 자동 전송을 중단합니다.")
++    return data
++
++
++class State:
++    def __init__(self, path="state/state.json"):
++        self.path = Path(path)
++        self.data = validate(json.loads(self.path.read_text(encoding="utf-8"))) if self.path.exists() else {"version": 1, "posts": {}}
++
++    def save(self):
++        validate(self.data)
++        self.path.parent.mkdir(parents=True, exist_ok=True)
++        temp = self.path.with_suffix(".tmp")
++        with temp.open("w", encoding="utf-8") as f:
++            json.dump(self.data, f, ensure_ascii=False, indent=2)
++            f.flush()
++            os.fsync(f.fileno())
++        os.replace(temp, self.path)
++
++    def seen(self, post):
++        return post.key in self.data["posts"] or any(x.get("fingerprint") == post.fingerprint for x in self.data["posts"].values())
++
++    def mark(self, post, status, **extra):
++        # Keep identifiers, fingerprints and delivery status; do not retain full bodies.
++        self.data["posts"][post.key] = {"status": status, "fingerprint": post.fingerprint, "url": post.url, "source": post.source, **extra}
++        self.save()
++
++    def forget(self, post):
++        self.data["posts"].pop(post.key, None)
++        self.save()
++
++
++class GitHubState(State):
++    """Persist BEFORE and AFTER each send, not only at the end of an Actions job."""
++    def __init__(self):
++        repo = os.environ.get("GITHUB_REPOSITORY", "")
++        token = os.environ.get("GITHUB_TOKEN", "")
++        if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo) or not token:
++            raise ValueError("GitHub 전송 기록 저장에 필요한 설정이 없습니다")
++        self.base = f"https://api.github.com/repos/{repo}"
++        self.headers = {"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json", "User-Agent": "PubgEventReminder/1.0", "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28"}
++        self.sha = None
++        self.branch_exists = False
++        try:
++            self.api("/git/ref/heads/pubg-events-state")
++            self.branch_exists = True
++        except HTTPFailure as e:
++            if e.status != 404:
++                raise
++        self.data = {"version": 1, "posts": {}}
++        if self.branch_exists:
++            try:
++                doc = self.api("/contents/delivery-state.json?ref=pubg-events-state")
++                self.sha = doc["sha"]
++                self.data = validate(json.loads(base64.b64decode(doc["content"]).decode("utf-8")))
++            except HTTPFailure as e:
++                if e.status != 404:
++                    raise
++                # A missing file on an existing state branch may mean lost history.
++                raise ValueError("pubg-events-state 브랜치의 기록 파일이 없습니다. 복구 후 실행하세요.") from None
++
++    def api(self, path, method="GET", data=None):
++        raw, _ = request(self.base + path, headers=self.headers, method=method, data=json.dumps(data).encode() if data is not None else None, redirects=False)
++        return json.loads(raw)
++
++    def save(self):
++        validate(self.data)
++        content = base64.b64encode(json.dumps(self.data, ensure_ascii=False, indent=2).encode()).decode()
++        if not self.branch_exists:
++            # Create an orphan state commit with its file, then attach a branch.
++            # If killed during initialization, no visible empty state branch is left.
++            blob = self.api("/git/blobs", "POST", {"content": content, "encoding": "base64"})
++            tree = self.api("/git/trees", "POST", {"tree": [{"path": "delivery-state.json", "mode": "100644", "type": "blob", "sha": blob["sha"]}]})
++            commit = self.api("/git/commits", "POST", {"message": "Initialize delivery history", "tree": tree["sha"], "parents": []})
++            self.api("/git/refs", "POST", {"ref": "refs/heads/pubg-events-state", "sha": commit["sha"]})
++            self.branch_exists, self.sha = True, blob["sha"]
++            return
++        result = self.api("/contents/delivery-state.json", "PUT", {"message": "Save delivery history", "content": content, "branch": "pubg-events-state", "sha": self.sha})
++        self.sha = result["content"]["sha"]
++
++
++class LocalLock:
++    def __init__(self, path):
++        self.path = Path(path)
++
++    def __enter__(self):
++        self.path.parent.mkdir(parents=True, exist_ok=True)
++        try:
++            fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
++        except FileExistsError:
++            raise ValueError("다른 실행이 진행 중이거나 잠금 파일이 남았습니다. README 복구 안내를 확인하세요.") from None
++        with os.fdopen(fd, "w") as f:
++            f.write(str(os.getpid()))
++        return self
++
++    def __exit__(self, *_):
++        self.path.unlink(missing_ok=True)
+diff --git a/game-news/requirements.txt b/game-news/requirements.txt
+new file mode 100644
+index 0000000..45353b0
+--- /dev/null
++++ b/game-news/requirements.txt
+@@ -0,0 +1,3 @@
++beautifulsoup4==4.14.3
++soupsieve==3.0.3
++typing_extensions==4.16.0
+diff --git a/game-news/tests/test_news.py b/game-news/tests/test_news.py
+new file mode 100644
+index 0000000..e9305b7
+--- /dev/null
++++ b/game-news/tests/test_news.py
+@@ -0,0 +1,86 @@
++from datetime import datetime
++import copy
++import json
++import tempfile
++from pathlib import Path
++import unittest
++
++from game_news.core import KST, Post, digest, payload
++from game_news.discovery import facts, make_post, UNKNOWN
++from game_news.patches import summarize
++from game_news.state import State
++from game_news.delivery import deliver, UncertainDelivery
++
++NOW = datetime(2026,10,16,20,tzinfo=KST)
++
++
++class NewsTests(unittest.TestCase):
++    def app(self):
++        return {'type':'game','name':'Test @everyone','platforms':{'windows':True},
++            'categories':[{'id':38}], 'release_date':{'date':'15 Oct, 2026','coming_soon':False},
++            'short_description':'Co-op for up to 4 players. 20-minute rounds.', 'detailed_description':''}
++
++    def test_explicit_game_facts(self):
++        g=facts('10',self.app(),NOW)
++        self.assertEqual(g['players'],'최대 4명 (공식 설명)')
++        self.assertEqual(g['duration'],'20분 (공식 설명)')
++        self.assertEqual(g['crossplay'],UNKNOWN)
++
++    def test_no_invented_player_or_session_count(self):
++        d=self.app(); d['short_description']='100 players reviewed this game. 40 hours of story.'
++        g=facts('10',d,NOW)
++        self.assertEqual(g['players'],UNKNOWN)
++        self.assertEqual(g['duration'],UNKNOWN)
++
++    def test_player_range_and_crossplay_scope(self):
++        d=self.app(); d['short_description']='2-6 player co-op';d['categories'].append({'id':27})
++        g=facts('10',d,NOW)
++        self.assertEqual(g['players'],'2–6명 (공식 설명)')
++        self.assertIn('플랫폼 조합은 원문 확인',g['crossplay'])
++
++    def test_filter_old_upcoming_dlc_and_local_only(self):
++        for change in [{'type':'dlc'},{'release_date':{'date':'1 Aug, 2026'}},{'release_date':{'date':'17 Oct, 2026','coming_soon':True}},{'categories':[{'id':9}]},{'platforms':{'windows':False}}]:
++            with self.subTest(change=change):
++                d=self.app();d.update(change)
++                self.assertIsNone(facts('10',d,NOW))
++
++    def test_poll_schema_limits_and_week_dedup(self):
++        g=facts('10',self.app(),NOW)
++        a=make_post([g],NOW)
++        b=make_post([dict(g,name='changed')],NOW)
++        self.assertEqual(a.key,b.key)
++        body=payload(a)
++        self.assertEqual(len(body['poll']['answers']),2)
++        self.assertEqual(body['poll']['duration'],72)
++        self.assertEqual(body['allowed_mentions'],{'parse':[]})
++        self.assertTrue(all(len(x['poll_media']['text'])<=55 for x in body['poll']['answers']))
++
++    def test_patch_console_and_store_excluded_and_numbers_preserved(self):
++        html='''<h1 class="detail-header__title">패치 노트 - 업데이트 44.1</h1><div class="content-template">
++        <h2>게임 플레이</h2><h3>무기 밸런스</h3><p>밸런스 소개</p><ul><li>무기 피해량이 40에서 42로 변경됩니다.</li></ul>
++        <h2>(Console) 신규 기능</h2><h3>무기 밸런스</h3><li>콘솔 무기 피해량 99로 변경됩니다.</li>
++        <h2>제작소</h2><li>새로운 전설 스킨 20개가 추가됩니다.</li>
++        <h2>신규 모드</h2><p>새로운 팀 모드가 추가되어 함께 플레이할 수 있습니다.</p>
++        <h2>버그 수정</h2><h3>게임 플레이</h3><li>소생이 실패하는 현상을 수정했습니다.</li></div>'''
++        post=summarize(html,'https://pubg.com/ko/news/12345')
++        body=json.dumps(post.body,ensure_ascii=False)
++        self.assertIn('40에서 42',body)
++        self.assertNotIn('99',body)
++        self.assertNotIn('전설 스킨',body)
++        self.assertIn('소생이 실패',body)
++
++    def test_sending_record_blocks_replay_after_interruption(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            store=State(Path(tmp)/'state.json')
++            p=Post(digest('test'),'https://pubg.com/ko/news/1','pubg-patch',{})
++            def fail(url,post):
++                self.assertTrue(State(store.path).seen(post))
++                raise UncertainDelivery()
++            with self.assertRaises(UncertainDelivery):
++                deliver([p],store,'unused',sender=fail,sleep=lambda _:None)
++            self.assertEqual(store.data['posts'][p.key]['status'],'uncertain')
++            self.assertEqual(deliver([p],store,'unused',sender=fail,sleep=lambda _:None),0)
++
++
++if __name__=='__main__':
++    unittest.main()
+diff --git a/game-news/tests/test_reminders.py b/game-news/tests/test_reminders.py
+new file mode 100644
+index 0000000..5e9dcd3
+--- /dev/null
++++ b/game-news/tests/test_reminders.py
+@@ -0,0 +1,179 @@
++from datetime import datetime
++import json
++from pathlib import Path
++import tempfile
++import unittest
++
++from pubg_events.collector import discover, parse_article
++from pubg_events.core import Event, KST, Reminder, due, payload
++from pubg_events.delivery import UncertainDelivery, deliver, send_one, webhook_url
++from pubg_events.net import HTTPFailure, NetworkError
++from pubg_events.state import State
++
++URL = "https://pubg.com/ko/events/notice/12345"
++
++
++def event(day=19, hour=9):
++    return Event("테스트 이벤트", "이벤트 참여 마감", datetime(2026, 10, day, hour, tzinfo=KST), URL, "미션 확인", "PC 일시")
++
++
++def html(body, title="특별 보급 테스트"):
++    return f'<article class="detail-header detail-header--pc"><h3 class="detail-header__title">{title}</h3></article><article class="content-template">{body}</article>'
++
++
++class ScheduleTests(unittest.TestCase):
++    def test_exactly_three_calendar_stages(self):
++        got = []
++        for day in range(1, 25):
++            got += [r.days for r in due([event()], datetime(2026, 10, day, 20, tzinfo=KST))]
++        self.assertEqual(got, [7, 3, 1])
++
++    def test_before_daily_hour_and_after_deadline(self):
++        self.assertEqual(due([event()], datetime(2026, 10, 16, 19, tzinfo=KST)), [])
++        self.assertEqual(due([event()], datetime(2026, 10, 19, 20, tzinfo=KST)), [])
++
++    def test_utc_to_kst_boundary(self):
++        now = datetime.fromisoformat("2026-10-16T11:00:00+00:00")
++        self.assertEqual(due([event()], now)[0].days, 3)
++
++    def test_late_discovery_does_not_backfill(self):
++        self.assertEqual(due([event()], datetime(2026, 10, 17, 20, tzinfo=KST)), [])
++        self.assertEqual([r.days for r in due([event()], datetime(2026, 10, 18, 20, tzinfo=KST))], [1])
++
++    def test_duplicate_source_and_deadline_revision(self):
++        self.assertEqual(len(due([event(), event()], datetime(2026, 10, 16, 20, tzinfo=KST))), 1)
++        self.assertNotEqual(Reminder(event(), 3).key, Reminder(event(hour=11), 3).key)
++
++    def test_payload_is_bounded_and_cannot_ping(self):
++        p = payload(Reminder(event(), 7))
++        self.assertEqual(p["allowed_mentions"], {"parse": []})
++        self.assertIn("D-7", p["embeds"][0]["title"])
++        self.assertIn("한국 시간", p["embeds"][0]["fields"][0]["value"])
++
++
++class ParseTests(unittest.TestCase):
++    def test_monthly_sections_and_pc_only(self):
++        body = '<h2>출석</h2><h3>이벤트 기간</h3><ul><li>PC: 26/10/14, 점검 완료 후 - 26/10/28, 11:00</li><li>Console: 26/10/22, 점검 완료 후 - 26/11/5, 11:00</li></ul><h2>할로윈</h2><h3>이벤트 기간</h3><li>PC: 26/10/28, 11:00 - 26/11/2, 11:00</li>'
++        events, warnings = parse_article(html(body), URL)
++        self.assertEqual(len(events), 2)
++        self.assertEqual(events[0].deadline, datetime(2026, 10, 28, 11, tzinfo=KST))
++        self.assertEqual(warnings, [])
++
++    def test_sales_are_excluded_crafting_is_separate(self):
++        body = '<h2>콜라보</h2><p>판매 기간</p><li>PC: 26/9/10, 점검 후 - 26/10/14, 09:00</li><h3>특수 제작</h3><p>특수 제작 탭 운영 종료일</p><li>PC: 26/9/10, 점검 후 - 26/10/19, 09:00</li>'
++        events, _ = parse_article(html(body, "PUBG x 테스트"), URL)
++        self.assertEqual(len(events), 1)
++        self.assertIn("재료 사용", events[0].kind)
++        self.assertEqual(events[0].deadline.day, 19)
++
++    def test_missing_clock_not_guessed(self):
++        events, warnings = parse_article(html('<h2>출석</h2><p>이벤트 기간</p><li>PC: 26/10/1 - 26/10/19</li>'), URL)
++        self.assertEqual(events, [])
++        self.assertTrue(warnings)
++
++    def test_invalid_date_not_guessed(self):
++        events, warnings = parse_article(html('<p>이벤트 기간</p><li>PC: 26/1/1, 09:00 - 26/2/30, 09:00</li>'), URL)
++        self.assertEqual(events, [])
++        self.assertTrue(warnings)
++
++    def test_header_date_never_used(self):
++        events, _ = parse_article(html('<p>2026.10.14 08:00 - 2026.11.19 14:59 (UTC)</p>'), URL)
++        self.assertEqual(events, [])
++
++    def test_other_timezone_requires_review(self):
++        events, warnings = parse_article(html('<p>이벤트 기간</p><li>PC: 26/1/1, 09:00 - 26/10/19, 09:00 UTC</li>'), URL)
++        self.assertEqual(events, [])
++        self.assertTrue(warnings)
++
++    def test_pc_cafe_is_not_marked_common(self):
++        events, warnings = parse_article(html('<p>이벤트 기간</p><li>PC: 26/1/1, 09:00 - 26/10/19, 09:00</li>', "PC방 이벤트"), URL)
++        self.assertEqual(events, [])
++        self.assertIn("PC방", warnings[0])
++
++    def test_no_execution_of_nuxt_javascript(self):
++        data = '<li class="post-contents__card"><span class="post__title">특별 보급</span></li><script>window.__NUXT__={postId:12345}; throw Error("never execute");</script>'
++        self.assertEqual(discover(data, "events"), [URL])
++
++    def test_list_structure_change_fails_visibly(self):
++        with self.assertRaises(ValueError):
++            discover('<script>window.__NUXT__={postId:123};</script>', "events")
++
++    def test_long_marketing_heading_does_not_become_title(self):
++        body = '<h2>제작소: 테스트</h2><h2>' + '이 설명은 제목이 아닙니다. ' * 12 + '</h2><h3>특수 제작</h3><p>특수 제작 탭 운영 종료일</p><li>PC: 26/9/10, 점검 후 - 26/10/19, 09:00</li>'
++        events, _ = parse_article(html(body, "PUBG x 테스트"), URL)
++        self.assertNotIn("설명", events[0].title)
++        self.assertIn("특수 제작", events[0].title)
++
++    def test_nested_blocks_do_not_leak_into_heading(self):
++        body = '<h2>콜라보</h2><h3>수집가<p>미션</p><ul><li>아이템 장착하기</li></ul><p>보상</p><ul><li>보상 A</li></ul><p>이벤트 기간</p><li>PC: 26/9/10, 점검 후 - 26/10/19, 09:00</li></h3>'
++        events, _ = parse_article(html(body), URL)
++        self.assertEqual(events[0].title, "콜라보 / 수집가")
++        self.assertTrue(events[0].condition_key)
++
++    def test_matching_missions_and_rewards_have_shared_identity(self):
++        body = '<h2>수집가</h2><h3>미션</h3><li>아이템 A 장착</li><h3>보상</h3><li>보상 A</li><h3>이벤트 기간</h3><li>PC: 26/9/10, 점검 후 - 26/10/19, 09:00</li>'
++        first, _ = parse_article(html(body), URL)
++        second, _ = parse_article(html(body, "PUBG x 테스트"), "https://pubg.com/ko/news/54321")
++        self.assertEqual(first[0].identity, second[0].identity)
++        different, _ = parse_article(html(body.replace("보상 A", "보상 B")), URL)
++        self.assertNotEqual(first[0].identity, different[0].identity)
++
++
++class DeliveryTests(unittest.TestCase):
++    def test_restart_and_all_stages(self):
++        with tempfile.TemporaryDirectory() as d:
++            path = Path(d) / "state.json"
++            sent = []
++            for day in [12, 12, 16, 16, 18, 18]:
++                store = State(path)
++                reminders = due([event()], datetime(2026, 10, day, 20, tzinfo=KST))
++                deliver(reminders, store, "unused", sender=lambda u, r: sent.append(r.days) or "123", sleep=lambda _: None)
++            self.assertEqual(sent, [7, 3, 1])
++
++    def test_uncertain_send_does_not_repeat(self):
++        with tempfile.TemporaryDirectory() as d:
++            path = Path(d) / "state.json"
++            reminder = Reminder(event(), 3)
++            def fail(*args):
++                raise UncertainDelivery("timeout")
++            with self.assertRaises(UncertainDelivery):
++                deliver([reminder], State(path), "unused", sender=fail)
++            self.assertTrue(State(path).seen(reminder))
++            self.assertEqual(State(path).data["posts"][reminder.key]["status"], "uncertain")
++
++    def test_no_send_if_state_cannot_save(self):
++        with tempfile.TemporaryDirectory() as d:
++            store = State(Path(d) / "state.json")
++            def cannot_save():
++                raise NetworkError("state unreachable")
++            store.save = cannot_save
++            calls = []
++            with self.assertRaises(NetworkError):
++                deliver([Reminder(event(), 1)], store, "unused", sender=lambda *a: calls.append(a))
++            self.assertEqual(calls, [])
++
++    def test_known_rejection_can_retry(self):
++        with tempfile.TemporaryDirectory() as d:
++            store = State(Path(d) / "state.json")
++            reminder = Reminder(event(), 1)
++            def rejected(*args):
++                raise HTTPFailure(403)
++            with self.assertRaises(HTTPFailure):
++                deliver([reminder], store, "unused", sender=rejected)
++            self.assertFalse(store.seen(reminder))
++
++    def test_transport_failure_is_uncertain(self):
++        def broken(*args, **kwargs):
++            raise NetworkError("timeout")
++        with self.assertRaises(UncertainDelivery):
++            send_one("unused", Reminder(event(), 1), transport=broken)
++
++    def test_webhook_validation_and_wait(self):
++        value = webhook_url("https://discord.com/api/webhooks/123/test_token")
++        self.assertTrue(value.endswith("?wait=true"))
++        with self.assertRaises(ValueError):
++            webhook_url("https://example.com/api/webhooks/123/test_token")
++
++
++if __name__ == "__main__":
++    unittest.main()
