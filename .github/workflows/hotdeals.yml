@@ -1,0 +1,45 @@
+name: Hotdeal notifier
+
+on:
+  schedule:
+    # UTC; avoid the busy start of each hour. Every 10 minutes, best effort.
+    - cron: '3,13,23,33,43,53 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'preview=수집만 / initialize=최초 상태 준비 / live=전송 / status=전송 확인 필요 목록'
+        type: choice
+        default: preview
+        options: [preview, initialize, live, status]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotdeal-notifier
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    if: github.ref_name == github.event.repository.default_branch && (github.event_name != 'schedule' || vars.HOTDEAL_ENABLED == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: write  # only used by cloud_state.py to checkpoint hotdeal-state/state.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Scan, preview or initialize
+        env:
+          PYTHONUTF8: '1'
+          GITHUB_TOKEN: ${{ github.token }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RUN_MODE: ${{ github.event_name == 'schedule' && 'live' || inputs.mode }}
+        run: python cloud_run.py --mode "$RUN_MODE"
