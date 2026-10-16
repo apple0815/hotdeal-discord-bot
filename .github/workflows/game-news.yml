@@ -1,0 +1,90 @@
+name: Gaming news
+on:
+  schedule:
+    - cron: '7 0,12 * * *'
+    - cron: '7 11 * * *'
+  push:
+    paths: ['game-news/**', '.github/workflows/game-news.yml']
+  workflow_dispatch:
+    inputs:
+      feature:
+        description: '기능'
+        type: choice
+        options: [all, events, patches, discovery]
+        default: all
+      mode:
+        description: 'preview=미리보기 / send=실제 게시'
+        type: choice
+        options: [preview, send]
+        default: preview
+permissions:
+  contents: write
+concurrency:
+  group: game-news-automation
+  cancel-in-progress: false
+jobs:
+  news:
+    if: github.event_name != 'schedule' || vars.GAME_NEWS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: game-news
+    steps:
+      - uses: actions/checkout@v4
+      - name: Expand initial source upload if present
+        working-directory: .
+        run: |
+          if [ -f game-news-bootstrap.patch ]; then
+            git apply --check game-news-bootstrap.patch
+            git apply game-news-bootstrap.patch
+          fi
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: game-news/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+      - name: Save verified initial sources
+        working-directory: .
+        run: |
+          if [ -f game-news-bootstrap.patch ]; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add game-news
+            git rm game-news-bootstrap.patch
+            git commit -m 'Install verified gaming news modules'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: Collect and deliver
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DISCORD_PUBG_NEWS_WEBHOOK_URL: ${{ secrets.DISCORD_PUBG_NEWS_WEBHOOK_URL }}
+          DISCORD_GAME_DISCOVERY_WEBHOOK_URL: ${{ secrets.DISCORD_GAME_DISCOVERY_WEBHOOK_URL }}
+          EVENT: ${{ github.event_name }}
+          CRON: ${{ github.event.schedule }}
+          FEATURE: ${{ inputs.feature }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ "$EVENT" = schedule ]; then
+            if [ "$CRON" = '7 11 * * *' ]; then
+              python -m game_news --feature events --send
+              if [ "$(TZ=Asia/Seoul date +%u)" = 5 ]; then
+                python -m game_news --feature discovery --send
+              fi
+            else
+              python -m game_news --feature patches --send
+            fi
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$MODE" = send ]; then
+            python -m game_news --feature "$FEATURE" --send
+          else
+            python -m game_news --feature "${FEATURE:-all}"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gaming-news-preview-${{ github.run_id }}
+          path: game-news/reports/
+          retention-days: 14
