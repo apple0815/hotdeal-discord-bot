@@ -44,6 +44,14 @@
       ],
       "message_id": "1560643498053468306",
       "sent_at": "2026-10-16T22:20:08.222943+09:00"
+    },
+    "6a4276d1cb724a1b23a7ba65": {
+      "status": "sending",
+      "fingerprint": "6a4276d1cb724a1b23a7ba65",
+      "url": "https://pubg.com/ko/news/10991",
+      "source": "pubg-events",
+      "app_ids": [],
+      "attempted_at": "2026-10-18T23:32:01.842693+09:00"
     }
   }
 }
