@@ -55,12 +55,13 @@
       "sent_at": "2026-10-18T23:32:03.936361+09:00"
     },
     "c5afbb9fe38c2b29e7059eeb": {
-      "status": "sending",
+      "status": "sent",
       "fingerprint": "c5afbb9fe38c2b29e7059eeb",
       "url": "https://pubg.com/ko/news/11136",
       "source": "pubg-patch",
       "app_ids": [],
-      "attempted_at": "2026-10-20T03:35:18.869551+09:00"
+      "message_id": "1561809996969279670",
+      "sent_at": "2026-10-20T03:35:20.608055+09:00"
     }
   }
 }
