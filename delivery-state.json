@@ -62,6 +62,18 @@
       "app_ids": [],
       "message_id": "1561809996969279670",
       "sent_at": "2026-10-20T03:35:20.608055+09:00"
+    },
+    "603fee9567c72240ed88e4f4": {
+      "status": "sending",
+      "fingerprint": "603fee9567c72240ed88e4f4",
+      "url": "https://store.steampowered.com/app/5339480/",
+      "source": "steam-recommendations",
+      "app_ids": [
+        "5339480",
+        "3154800",
+        "5066350"
+      ],
+      "attempted_at": "2026-10-23T00:53:06.022614+09:00"
     }
   }
 }
