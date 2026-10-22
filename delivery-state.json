@@ -64,7 +64,7 @@
       "sent_at": "2026-10-20T03:35:20.608055+09:00"
     },
     "603fee9567c72240ed88e4f4": {
-      "status": "sending",
+      "status": "sent",
       "fingerprint": "603fee9567c72240ed88e4f4",
       "url": "https://store.steampowered.com/app/5339480/",
       "source": "steam-recommendations",
@@ -73,7 +73,8 @@
         "3154800",
         "5066350"
       ],
-      "attempted_at": "2026-10-23T00:53:06.022614+09:00"
+      "message_id": "1562856337962959004",
+      "sent_at": "2026-10-23T00:53:07.654125+09:00"
     }
   }
 }
