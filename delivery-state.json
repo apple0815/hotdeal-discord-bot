@@ -93,6 +93,14 @@
       "app_ids": [],
       "message_id": "1563929257283948625",
       "sent_at": "2026-10-25T23:56:31.454609+09:00"
+    },
+    "b7f572d3e2bdae7047c5e67a": {
+      "status": "sending",
+      "fingerprint": "b7f572d3e2bdae7047c5e67a",
+      "url": "https://pubg.com/ko/events/notice/11183",
+      "source": "pubg-events",
+      "app_ids": [],
+      "attempted_at": "2026-10-25T23:56:34.571545+09:00"
     }
   }
 }
