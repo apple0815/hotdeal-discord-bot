@@ -75,6 +75,14 @@
       ],
       "message_id": "1562856337962959004",
       "sent_at": "2026-10-23T00:53:07.654125+09:00"
+    },
+    "80a01dc18f9cb8996666f0d9": {
+      "status": "sending",
+      "fingerprint": "80a01dc18f9cb8996666f0d9",
+      "url": "https://pubg.com/ko/events/notice/11183",
+      "source": "pubg-events",
+      "app_ids": [],
+      "attempted_at": "2026-10-25T23:56:24.676411+09:00"
     }
   }
 }
