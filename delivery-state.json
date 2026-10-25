@@ -95,12 +95,13 @@
       "sent_at": "2026-10-25T23:56:31.454609+09:00"
     },
     "b7f572d3e2bdae7047c5e67a": {
-      "status": "sending",
+      "status": "sent",
       "fingerprint": "b7f572d3e2bdae7047c5e67a",
       "url": "https://pubg.com/ko/events/notice/11183",
       "source": "pubg-events",
       "app_ids": [],
-      "attempted_at": "2026-10-25T23:56:34.571545+09:00"
+      "message_id": "1563929276536062035",
+      "sent_at": "2026-10-25T23:56:36.065724+09:00"
     }
   }
 }
