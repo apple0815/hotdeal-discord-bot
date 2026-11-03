@@ -115,6 +115,14 @@
       ],
       "message_id": "1565416196868804853",
       "sent_at": "2026-10-30T02:25:05.703938+09:00"
+    },
+    "bbdd8911a94230de9cd95bc2": {
+      "status": "sending",
+      "fingerprint": "bbdd8911a94230de9cd95bc2",
+      "url": "https://pubg.com/ko/news/11338",
+      "source": "pubg-patch",
+      "app_ids": [],
+      "attempted_at": "2026-11-03T15:04:24.744003+09:00"
     }
   }
 }
