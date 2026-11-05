@@ -124,6 +124,18 @@
       "app_ids": [],
       "message_id": "1567056843111534674",
       "sent_at": "2026-11-03T15:04:26.173022+09:00"
+    },
+    "a242da9599516f8a4a960912": {
+      "status": "sending",
+      "fingerprint": "a242da9599516f8a4a960912",
+      "url": "https://store.steampowered.com/app/5088660/",
+      "source": "steam-recommendations",
+      "app_ids": [
+        "5088660",
+        "2433560",
+        "5483370"
+      ],
+      "attempted_at": "2026-11-06T03:42:15.445206+09:00"
     }
   }
 }
