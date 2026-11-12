@@ -139,7 +139,7 @@
       "sent_at": "2026-11-06T03:42:17.055985+09:00"
     },
     "18ba8b3a1dd800080eb5b1ea": {
-      "status": "sending",
+      "status": "sent",
       "fingerprint": "18ba8b3a1dd800080eb5b1ea",
       "url": "https://store.steampowered.com/app/4612760/",
       "source": "steam-recommendations",
@@ -148,7 +148,8 @@
         "4698160",
         "5522560"
       ],
-      "attempted_at": "2026-11-13T03:52:02.744512+09:00"
+      "message_id": "1570511516283830295",
+      "sent_at": "2026-11-13T03:52:04.366686+09:00"
     }
   }
 }
